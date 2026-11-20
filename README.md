@@ -12,7 +12,7 @@ A flow cytometry experiment can produce millions of events across dozens of samp
 
 The package builds on [`datanuggets`](https://pypi.org/project/datanuggets/), a Python port of the R packages `datanugget` and `WCluster`. It offers a local web app, a command-line interface and a Python API.
 
-> **Research alpha (`0.1.0a3`).** This is an exploratory analysis tool. It isn't an automated cell-type identification system or a validated clinical analysis system. Its clusters are mathematical groupings, and they aren't confirmed biological populations. The API and analysis defaults may change.
+> **Research alpha (`0.1.0a4`).** This is an exploratory analysis tool. It isn't an automated cell-type identification system or a validated clinical analysis system. Its clusters are mathematical groupings, and they aren't confirmed biological populations. The API and analysis defaults may change.
 
 [Project page](https://ron2k1.github.io/datanuggetsflowcytometry/) · [App guide](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/app/running-locally.md) · [Command reference](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/cli.md) · [Python API](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/api.md) · [Methodology](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/methodology.md) · [Limitations](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/limitations.md)
 
@@ -23,7 +23,7 @@ The package builds on [`datanuggets`](https://pypi.org/project/datanuggets/), a 
 With Docker installed, run:
 
 ```sh
-docker run --rm -p 127.0.0.1:8000:8000 -v datanuggets-data:/data ghcr.io/ron2k1/datanuggets-flow:0.1.0a3
+docker run --rm -p 127.0.0.1:8000:8000 -v datanuggets-data:/data ghcr.io/ron2k1/datanuggets-flow:0.1.0a4
 ```
 
 Open <http://127.0.0.1:8000> in your browser. The app lets you inspect candidate gates, choose which populations to include, run the clustering and explore the results with interactive plots.
@@ -34,7 +34,7 @@ The image includes a small public PBMC demonstration dataset of four FCS files, 
 
 ![The population step of the app, with each file's scatter density and tick boxes for its candidate populations](https://github.com/ron2k1/datanuggetsflowcytometry/raw/main/docs/images/app-populations.png)
 
-The population step shows each file's FSC-A and SSC-A density with the peaks the gate finder kept. You tick the populations to carry into the clustering.
+The population step shows each file's scatter density, FSC-A and SSC-A here, with the peaks the gate finder kept. You tick the populations to carry into the clustering.
 
 ![The cluster step of the app, with the cluster count, the nuggets per file and a tick box for every channel](https://github.com/ron2k1/datanuggetsflowcytometry/raw/main/docs/images/app-cluster-settings.png)
 
@@ -45,7 +45,7 @@ The cluster step is where you set the number of clusters and how many nuggets ea
 The package requires Python 3.12 or newer and a platform that the underlying `datanuggets` package supports. Those are Windows x64, Apple silicon Macs running macOS 12 or newer, and Linux x86-64 or ARM64 with glibc 2.27 or newer. Install the pinned alpha:
 
 ```sh
-python -m pip install "datanuggets-flow==0.1.0a3"
+python -m pip install "datanuggets-flow==0.1.0a4"
 ```
 
 The package uses `datanuggets` for reduction and weighted clustering, `flowio` for FCS input, and pandas, matplotlib and scikit-learn for analysis and reporting.
@@ -108,7 +108,7 @@ The candidate populations are numbered separately for each file. Population 1 in
 The pipeline has two stages. The first decides which events to keep. The second clusters the selected events together.
 
 1. **Read the FCS files.** Event values are read using `flowio`. The pipeline doesn't apply fluorescence spillover compensation. A file whose spillover matrix differs from the identity gets a warning, and the run goes on.
-2. **Find candidate gates.** For each file, the gate finder works in the FSC-A/SSC-A plane after a square-root transformation. It uses a 100 by 100 density grid and local peaks to propose populations. These are candidates for review. They aren't verified lymphocyte, monocyte or other cell identities.
+2. **Find candidate gates.** For each file, the gate finder works in the forward and side scatter plane after a square-root transformation. That's FSC-A and SSC-A on most files, and you can name any two channels instead. A few events past a channel's range are left out. It uses a 100 by 100 density grid and local peaks to propose populations. These are candidates for review. They aren't verified lymphocyte, monocyte or other cell identities.
 3. **Choose populations.** You decide which gates to retain in each sample. A candidate gate may overlap another, and events can lie outside every candidate gate. An event in two retained gates is counted once. `selection.csv` records how many events each file keeps.
 4. **Transform and scale markers.** Retained channels are transformed with `arcsinh(x / c)` and standardized using pooled statistics, so values from the included files are mapped into a common feature space. By default the cofactor `c` is chosen per channel by a package heuristic. It doesn't come from the Data Nuggets paper.
 5. **Create nuggets per file.** By default, the package targets up to 1,000 nuggets from the retained events in each file. In this pipeline, the default nugget center is an original selected event rather than a within-nugget mean. Each nugget also carries a weight describing how many events it represents and a scale describing within-nugget variability. The pipeline doesn't run the nugget refinement step used in the published flow cytometry example.

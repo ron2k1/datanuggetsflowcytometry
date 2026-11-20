@@ -1,17 +1,16 @@
 // Datasets: the FCS uploads whose colour channels are the same set (docs/app/flow-only-and-
-// datasets.md part 2). A colour channel is a $PnN name, compared as stored, that ends in
-// FLOW_CHANNEL_SUFFIX and does not start with a scatter prefix: the package's default clustering
-// rule. Order never matters, and Time, -H and -W channels and the stains ($PnS) never count. A gate
-// takes files from one dataset; the server refuses one that mixes them, with diffText's words.
+// datasets.md part 2). A colour channel is a $PnN name, compared as stored, that the package's
+// default clustering rule takes (channels.js defaultChannels). Order never matters, and the
+// stains ($PnS) never count. A gate takes files from one dataset; the server refuses one that
+// mixes them, with diffText's words.
 // Pure: it reads only the uploads and names it is given (live, fixture and read-in-the-tab alike).
-import { FLOW_CHANNEL_SUFFIX, LIVECELLS_SCATTER_PREFIXES } from './config.js';
+import { defaultChannels } from './channels.js';
 import { plural, pyStrip } from './format.js';
 
 const MAX_NAMES = 3;   // names a list shows before "and N more"
 
-export const isColourChannel = name => name.endsWith(FLOW_CHANNEL_SUFFIX) && !LIVECELLS_SCATTER_PREFIXES.some(p => name.startsWith(p));
 // An upload's colour channels, sorted, each once.
-export const colourChannels = u => [...new Set((u.columns || []).map(c => c.name).filter(isColourChannel))].sort();
+export const colourChannels = u => [...new Set(defaultChannels((u.columns || []).map(c => c.name)))].sort();
 // Two uploads are in one dataset when their keys are equal: the sorted channels, as one string.
 const keyOf = channels => JSON.stringify([...new Set(channels)].sort());
 export const datasetKey = u => keyOf(colourChannels(u));
@@ -33,9 +32,10 @@ export function diffText(a, b) {
 export function stainDiffs(files) {
   const by = new Map();
   for (const u of files) {
+    const colour = new Set(colourChannels(u));
     for (const c of u.columns || []) {
       const label = pyStrip(c.label || '');
-      if (!label || !isColourChannel(c.name)) continue;
+      if (!label || !colour.has(c.name)) continue;
       if (!by.has(c.name)) by.set(c.name, new Map());
       const users = by.get(c.name).get(label) || [];
       if (!users.includes(u)) by.get(c.name).set(label, [...users, u]);

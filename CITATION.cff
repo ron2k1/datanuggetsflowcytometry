@@ -5,10 +5,11 @@ message: >-
 title: datanuggets-flow
 abstract: >-
   A flow cytometry pipeline built on the datanuggets library. It gates each
-  FCS file on forward and side scatter, reduces the populations you keep to
-  weighted data nuggets and clusters the nuggets of every file together.
+  FCS file on two channels, forward and side scatter unless others are named,
+  reduces the populations you keep to weighted data nuggets and clusters the
+  nuggets of every file together.
 type: software
-version: 0.1.0a3
+version: 0.1.0a4
 date-released: "2026-11-20"
 authors:
   - given-names: Ronil

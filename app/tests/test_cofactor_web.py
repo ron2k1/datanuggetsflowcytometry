@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import math
-import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -95,13 +94,6 @@ SET = {"name": "arcsinh", "cofactor": 6000.0, "cofactor_from": "set"}
 LEGACY = {"name": "arcsinh", "cofactor": 150.0, "cofactor_from": "auto", "range": 262144.0}
 LEGACY_NONE = {"name": "arcsinh", "cofactor": 6000.0, "cofactor_from": "auto", "range": None}
 OLD = {"name": "arcsinh", "cofactor": 5.0}
-
-
-def test_the_time_pattern_is_the_packages(js):
-    from datanuggets_flow._defaults import FLOW_TIME_PATTERN
-
-    got = js("const r = config.LIVECELLS_TIME_RE; return [r.source, r.flags];")
-    assert got == [FLOW_TIME_PATTERN, "i"]
 
 
 def test_the_rule_is_the_packages():
@@ -309,25 +301,3 @@ def test_live_cells_draw_each_channel_on_its_own_cofactor(js):
             assert (cof, frm, title) == (w_cof, w_from, w_title)
             assert t == pytest.approx(w_t, rel=1e-12)
             assert back == pytest.approx(-250, rel=1e-12)
-
-
-def test_the_marker_channels_are_the_packages(js):
-    """Scatter (FSC or SSC at the start) and Time, by the package's own constants, are the
-    channels the upload view shows no header range for."""
-    from datanuggets_flow._defaults import FLOW_SCATTER_PREFIXES, FLOW_TIME_PATTERN
-
-    names = [
-        "FSC-A",
-        "SSC-B-H",
-        "Time",
-        "TIME",
-        "HDR-T",
-        "Time (s)",
-        "CD3-A",
-        "Timestamp",
-        "CD3-FSC",
-    ]
-    time = re.compile(FLOW_TIME_PATTERN, re.IGNORECASE)
-    want = [not n.startswith(FLOW_SCATTER_PREFIXES) and not time.match(n) for n in names]
-    assert want == [False, False, False, False, False, False, True, True, True]
-    assert js(f"return {json.dumps(names)}.map(cof.isMarkerChannel);") == want

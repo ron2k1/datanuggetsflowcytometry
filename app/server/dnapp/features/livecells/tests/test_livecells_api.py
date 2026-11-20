@@ -109,8 +109,9 @@ def test_refusals_name_their_field(base, on_copy):
 
 def test_a_channel_with_a_lone_surrogate_is_refused(base, on_copy):
     """Half a UTF-16 surrogate pair, which a JSON escape can carry and UTF-8 cannot encode, is
-    refused before a set is kept, scatter-named or not: a set that held one failed every answer
-    that lists it, and a refusal naming it failed too. The body goes as json.dumps writes it."""
+    refused before a set is kept, whatever the rest of the name: a set that held one failed every
+    answer that lists it, and a refusal naming it failed too. The body goes as json.dumps writes
+    it."""
     c = on_copy()
     before = len(jobs(c))
     for bad in ("\ud800-A", "FSC\udfff-A"):
@@ -139,34 +140,24 @@ def test_a_refusal_that_names_a_lone_surrogate_still_answers(base, on_copy):
     assert err["message"].startswith("�-A is not one of this set's channels")
 
 
-def test_every_marker_channel_and_no_scatter(base, on_copy):
-    """At the trial caps a set takes every marker channel of the file, past the viability dye
-    and CD45, and counts take a filter on each and more. A scatter channel is refused by name,
-    since forward and side scatter are set in the gate settings, and starts no job. (The
+def test_every_channel_scatter_included(base, on_copy):
+    """At the trial caps a set takes every channel of the file, forward and side scatter too
+    (no channel name is assumed, so a file from any instrument can be filtered on any of its
+    channels), past the viability dye and CD45, and counts take a filter on each and more. (The
     channel cap's own refusal is in test_refusals_name_their_field.)"""
     c = on_copy(
         livecells_channels_max=TRIAL_CAPS.livecells_channels_max,
         livecells_filters_max=TRIAL_CAPS.livecells_filters_max,
     )
-    assert TRIAL_CAPS.livecells_channels_max > 2 and TRIAL_CAPS.livecells_filters_max > 4
+    assert TRIAL_CAPS.livecells_channels_max > 4 and TRIAL_CAPS.livecells_filters_max > 4
     channels = base["channels"]
-    scatter = [ch for ch in channels if ch.startswith(("FSC", "SSC"))]
-    markers = [ch for ch in channels if ch not in scatter]
-    assert scatter == ["FSC-A", "SSC-A"] and len(markers) == 3  # 202's recorded channels
-    before = len(jobs(c))
-    for chosen in ([scatter[0], markers[0]], [markers[0], scatter[1]], scatter):
-        r = c.post(SETS, json=base["body"] | {"channels": chosen})
-        assert_error(r, 422, "invalid_setting", "channels")
-        message = r.json()["error"]["message"]
-        assert "scatter" in message and all(s in message for s in chosen if s in scatter)
-    assert len(jobs(c)) == before
-
-    r = c.post(SETS, json=base["body"] | {"channels": markers})
+    assert channels[:2] == ["FSC-A", "SSC-A"] and len(channels) == 5  # 202's recorded channels
+    r = c.post(SETS, json=base["body"] | {"channels": channels})
     assert r.status_code == 202, r.text
     assert wait_job(c, r.json()["job"]["id"])["status"] == "done"
     lid = r.json()["livecells_id"]
     hist = c.get(f"{SETS}/{lid}").json()["histograms"]
-    assert [h["channel"] for h in hist["channels"]] == markers
+    assert [h["channel"] for h in hist["channels"]] == channels
     # a line on each channel at its middle edge, plus two more: five filters, past the old four
     filters = [
         {"column": h["channel"], "op": ">", "value": h["edges"][len(h["edges"]) // 2]}

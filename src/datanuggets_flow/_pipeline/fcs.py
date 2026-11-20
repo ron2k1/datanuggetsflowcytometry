@@ -23,6 +23,12 @@ def _flowio():
     return flowio
 
 
+def _name(text: Mapping[str, str], k: int) -> str:
+    """Channel k's $PnN, or P and k when the file has none, as FCS 2.0 allows and as the app's
+    in-tab reader names it."""
+    return text.get(f"p{k}n") or f"P{k}"
+
+
 def _range(text: Mapping[str, str], k: int, name: str) -> float | None:
     """Channel k's top value as flowio's preprocess gives it, or None (see decode_ranges)."""
     try:
@@ -57,7 +63,7 @@ def decode_ranges(text: Mapping[str, str]) -> tuple[list[str], list[float | None
     missing, or $PnR, $PnE or $PnG doesn't read as numbers flowio takes, or the range isn't a
     positive finite number. A missing $PnE is linear and a missing $PnG 1, as flowio reads them."""
     t = {str(k).lower().lstrip("$"): v for k, v in text.items()}
-    names = [t.get(f"p{k}n", "") for k in range(1, int(t["par"]) + 1)]
+    names = [_name(t, k) for k in range(1, int(t["par"]) + 1)]
     return names, [_range(t, k, name) for k, name in enumerate(names, 1)]
 
 
@@ -71,12 +77,13 @@ def read_ranges(path) -> tuple[list[str], list[float | None]]:
 
 
 def read_fcs(path) -> tuple[np.ndarray, list[str], list[str]]:
-    """A file's events, one column per channel, with each channel's $PnN name and $PnS label
-    ('' when it has none). The events are flowio's, as stored: a spillover matrix further than
-    FLOW_SPILL_TOL from the identity gives a DataNuggetWarning, since nothing compensates them."""
+    """A file's events, one column per channel, with each channel's $PnN name (P and its number
+    when it has none) and $PnS label ('' when it has none). The events are flowio's, as stored: a
+    spillover matrix further than FLOW_SPILL_TOL from the identity gives a DataNuggetWarning,
+    since nothing compensates them."""
     fd = _flowio().FlowData(str(path))
     c = fd.channel_count
-    pnn = [fd.text[f"p{k}n"] for k in range(1, c + 1)]
+    pnn = [_name(fd.text, k) for k in range(1, c + 1)]
     pns = [fd.text.get(f"p{k}s", "").strip() for k in range(1, c + 1)]
     spill = fd.text.get("spillover") or fd.text.get("spill")
     if spill:

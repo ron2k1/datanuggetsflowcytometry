@@ -30,7 +30,8 @@ def parse_pops(text: str, n: int) -> list[int]:
         raise ValueError("no population given; type numbers like 1,2, or all, or none")
     bad = [p for p in sorted(pops) if not 1 <= p <= n]
     if bad:
-        raise ValueError(f"there is no Pop {bad[0]}; this file has Pop 1 to Pop {n}")
+        has = f"Pop 1 to Pop {n}" if n else "no populations; choose none for it"
+        raise ValueError(f"there is no Pop {bad[0]}; this file has {has}")
     return sorted(pops)
 
 

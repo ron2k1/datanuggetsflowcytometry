@@ -58,9 +58,8 @@ def get_livecells(gid: str, request: Request, ws: WS):
 
 def normalized(body: LivecellsRequest, s: State, files: list[dict]) -> dict:
     """The request as the cache compares it: pops sorted per file, the channels in order, and
-    bins and cofactor filled in; 422 naming the field that is out of range, or channels for a
-    scatter channel or one LONE matches. Any number of distinct marker channels passes, up to the
-    trial cap."""
+    bins and cofactor filled in; 422 naming the field that is out of range, or channels for one
+    LONE matches. Any number of distinct channels passes, scatter included, up to the trial cap."""
     caps = s.settings.caps
     check_pops(files, body.pops)
     if not body.channels:
@@ -72,14 +71,6 @@ def normalized(body: LivecellsRequest, s: State, files: list[dict]) -> dict:
         raise ApiError(
             "invalid_setting",
             "A channel name has a lone surrogate (U+D800 to U+DFFF), which is not a character.",
-            "channels",
-        )
-    scatter = livecells.scatter(body.channels)
-    if scatter:
-        raise ApiError(
-            "invalid_setting",
-            f"{', '.join(scatter)}: the live-cell filters take marker channels, not forward or "
-            "side scatter, which the gate settings set.",
             "channels",
         )
     sent = {k: v for k, v in (("bins", body.bins), ("cofactor", body.cofactor)) if v is not None}

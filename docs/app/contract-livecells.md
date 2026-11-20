@@ -3,7 +3,7 @@
 An amendment to [contract.md](contract.md), which still wins wherever this file is silent. It
 adds one step to the flow path: after the populations are chosen and before the cluster form,
 the user keeps the live white cells by placing a threshold on a viability dye and one on CD45,
-and can place more on any other marker channel.
+and can place more on any other channel.
 
 The rule behind every section: **nothing suggests a threshold.** The package may name which
 channel looks like the viability dye and which looks like CD45, from the channel names alone. It
@@ -139,10 +139,9 @@ rule reads too. `channels` is the Gate payload's `files[0].channels`. `suggested
  "bins": 128, "cofactor": "auto"}
 ```
 - `pops` takes one list per gate file, as in `POST /flow/runs`. `channels` takes 1 to
-  `LIVECELLS_CHANNELS_MAX` `$PnN` names, distinct, in any number past the two roles. They are
-  marker channels: a name that starts with `FSC` or `SSC` (`FLOW_SCATTER_PREFIXES`, the rule
-  the default clustering channels use) is refused with 422 param `channels`, since the gate
-  settings set forward and side scatter. Records made before this rule keep loading. A name
+  `LIVECELLS_CHANNELS_MAX` `$PnN` names, distinct, in any number past the two roles. Any channel
+  of the files is taken, forward and side scatter too, since no channel name is assumed (a file
+  from a mass cytometer has none). A name
   that holds a lone surrogate (U+D800 to U+DFFF), which a JSON escape can carry and UTF-8
   cannot, is refused with 422 param `channels` too.
 - `bins` (default 128) must be `LIVECELLS_BINS_MIN` to `LIVECELLS_BINS_MAX`. `cofactor` takes
@@ -243,17 +242,15 @@ Steps on the gate screen: **Populations -> Live cells -> Cluster**. Live cells i
 with **Skip** and **Continue**. Skip goes to the cluster form and adds nothing.
 
 - **Entering the step** sends `GET .../livecells` and fills one dropdown per row:
-  - The first two rows are "Viability dye" and "CD45". Each dropdown lists file 1's marker
-    channels as `pns (pnn)`, plus "None". Marker channels are every channel but forward and
-    side scatter (`$PnN` starting with `FSC` or `SSC`, the package's `FLOW_SCATTER_PREFIXES`)
-    and the time channel (`Time`, `Time (s)`, `HDR-T`). The gate settings' scatter dropdowns are
-    unchanged.
+  - The first two rows are "Viability dye" and "CD45". Each dropdown lists file 1's channels as
+    `pns (pnn)`, plus "None": every channel but the time channel (`Time`, `Time (s)`, `HDR-T`),
+    forward and side scatter included.
   - The two rows start on `suggested.viability` / `suggested.cd45`.
   - When a suggestion is null but there are candidates, a note names them ("Several channels
     look like a viability dye: A, B. Choose one.") and the dropdown stays on "None".
   - With no candidates the note says no channel's name looks like one.
   - "Add a channel" adds a row (its dropdown on "None", its side "keep above"), up to one row
-    per marker channel, or `livecells_channels_max` rows in trial mode. An added row can be
+    per channel offered, or `livecells_channels_max` rows in trial mode. An added row can be
     removed; the two role rows can be set to "None". A channel chosen in one row is shown but
     disabled in the others. Added rows are named "Channel 1", "Channel 2" and so on, counting
     added rows only.
@@ -354,8 +351,8 @@ with **Skip** and **Continue**. Skip goes to the cluster form and adds nothing.
 ### Server (S)
 - S13 The four endpoints exist with the pinned key sets and errors: 409 for a gate or record not
   done, 404 for an unknown lid, 422 with `param` for each of `pops`, `channels`, `bins`,
-  `cofactor`, `row_filters`. A scatter channel gets 422 `channels` naming it; every marker
-  channel of a file is taken at the trial caps.
+  `cofactor`, `row_filters`. Every channel of a file is taken at the trial caps, scatter
+  included.
 - S14 End to end on the S6 real-event fixture: POST -> a `livecells` job done -> `histograms`
   equals `channel_histograms(kept_values(...))`. The counts response equals `count_kept` and the
   `filtered` column of a flow run sent the same `row_filters`.
@@ -371,8 +368,8 @@ with **Skip** and **Continue**. Skip goes to the cluster form and adds nothing.
 
 ### Web (W)
 - W14 Live cells sits between Populations and Cluster, with Skip. The dropdowns start on the
-  suggestions. An ambiguous or empty suggestion shows its note. "None" is offered; no scatter
-  channel and no Time is. "Add a channel" adds removable rows, up to one per marker channel, and
+  suggestions. An ambiguous or empty suggestion shows its note. "None" is offered, and every
+  channel but Time. "Add a channel" adds removable rows, up to one per channel offered, and
   a channel one row holds is disabled in the others.
 - W15 Bars are on the arcsinh axis of the channel's own cofactor with raw tick labels, and
   below/above are shown. No line appears before a click. The line drags, is clamped to

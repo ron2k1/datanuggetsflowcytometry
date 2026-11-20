@@ -50,7 +50,8 @@ def test_config_local_and_trial(make_client):
         "min_negative_fraction": 0.01,
     }
     assert list(local["defaults"]["cofactor_auto"]) == ["rule", "floor", "min_negative_fraction"]
-    assert local["defaults"]["gate"]["fsc"] == "FSC-A"
+    # no channel name is assumed: the gate takes each first file's own (gate_channels)
+    assert local["defaults"]["gate"]["fsc"] is None and local["defaults"]["gate"]["ssc"] is None
     assert local["defaults"]["gate"]["disc"] == "reference"  # the web's area rule options
     assert local["docker_command"].startswith("docker run")
     trial = make_client("trial", sub="t").get(f"{API}/config").json()

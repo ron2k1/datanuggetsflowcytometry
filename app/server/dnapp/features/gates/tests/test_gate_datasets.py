@@ -1,5 +1,5 @@
-"""A gate takes files from one dataset: uploads whose colour channels, the $PnN names that end in
--A and do not start with FSC or SSC, are the same set. POST /flow/gates compares every file with
+"""A gate takes files from one dataset: uploads whose colour channels, the package's default
+channels (the $PnN names that end in -A and do not start with FS or SS), are the same set. POST /flow/gates compares every file with
 the first and refuses the first that differs, before a job is queued. The files are 202's
 recorded events (testkit's fcs_202) with a channel dropped, added from another of its columns,
 moved or relabelled."""
@@ -87,9 +87,15 @@ def test_colour_channels_are_the_packages_default_channels_as_a_set():
     pnn = ["FSC-A", "SSC-A", SPARK, AF700, BV510]
     assert colour_channels(pnn) == [AF700, BV510, SPARK]
     assert colour_channels(pnn) == sorted(default_channels(pnn, [""] * 5, "202.fcs"))
-    # scatter by its prefix, -H, -W and Time never count, and a name counts once
+    # scatter by its prefix, -H, -W and Time never count beside two -A channels, and a name
+    # counts once
     other = ["FSC-H", "SSC-B-A", "SSC-W", "Time", "Zombie NIR-H", BV510]
-    assert colour_channels([*other, BV510]) == [BV510]
+    assert colour_channels([*other, BV510, AF700]) == [AF700, BV510]
+    # with fewer, every channel but scatter and Time does, as on a mass cytometer
+    assert colour_channels([*other, BV510]) == [BV510, "Zombie NIR-H"]
+    assert colour_channels(["Time", "Ir193Di", "Ce140Di", "Ir191Di"]) == [
+        "Ce140Di", "Ir191Di", "Ir193Di"
+    ]  # fmt: skip
     assert colour_channels(["FSC-A", "SSC-A"]) == []
 
 

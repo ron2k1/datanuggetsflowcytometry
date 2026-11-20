@@ -40,7 +40,8 @@ TAKES = {
     "local_maxima": ("n_row", "n_col"),
 }
 # datanuggets-flow's defaults, as it has always run
-GATE = FINDER | {"fsc": "FSC-A", "ssc": "SSC-A", "disc": "reference", "t11": (22,), "t21": (0.25,)}
+# no channel name is fixed: the gate takes each file's own (gate_channels)
+GATE = FINDER | {"fsc": None, "ssc": None, "disc": "reference", "t11": (22,), "t21": (0.25,)}
 CLUSTER = {
     "channels": None,
     "exclude_channels": (),
@@ -111,6 +112,13 @@ TWO = "choose at least two distinct fluorescence channels for clustering and PCA
 # many values t11 and t21 give is test_gate_settings_spread_per_file_thresholds'
 BAD = [
     (GateSettings(disc="hist"), "disc", "disc is 'hist'; it takes reference or peak"),
+    (
+        GateSettings(fsc="SSC-A", ssc="SSC-A"),
+        "ssc",
+        "ssc is 'SSC-A', the gate's other channel too; gate on two different channels",
+    ),
+    (GateSettings(fsc=""), "fsc", "fsc is ''; it takes a channel's name, or none for the default"),
+    (GateSettings(ssc=3), "ssc", "ssc is 3; it takes a channel's name, or none for the default"),
     (GateSettings(t11=(22, 0)), "t11", f"t11 is 0; {DISTANCE}"),
     (GateSettings(t12=math.nan), "t12", f"t12 is nan; {DISTANCE}"),
     (GateSettings(t21=(-0.5,)), "t21", f"t21 is -0.5; {FRACTION}"),
@@ -216,6 +224,9 @@ def test_settings_defaults_are_the_cli_defaults():
     for s, defaults in ((GateSettings(), GATE), (ClusterSettings(), CLUSTER)):
         assert dataclasses.asdict(s) == defaults
         assert s.check() is s
+    assert GateSettings(fsc="SSC-A").check()  # the other, left to the file, can't be the same
+    help_text = pick._parser().format_help()
+    assert "None" not in help_text and "forward scatter" in help_text
 
 
 @pytest.mark.parametrize("name", CHANGED)

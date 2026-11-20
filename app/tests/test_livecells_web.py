@@ -1,8 +1,8 @@
 """The Live cells step's row logic, app/web/features/live-cells/rows.js, run in Node: the channels
 its dropdowns offer, the rows it starts with and adds, and the filters it hands on. The channel
-list is the PBMC demo's, from the step's GET fixture, and the scatter prefixes are pinned to the
-package's own. The module and the config it imports are copied beside a package.json that marks
-them as ES modules, so any Node from 18 on runs them; the tests skip where Node isn't installed."""
+list is the PBMC demo's, from the step's GET fixture. The module and the shared ones it imports
+are copied beside a package.json that marks them as ES modules, so any Node from 18 on runs them;
+the tests skip where Node isn't installed."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import pytest
 
 WEB = Path(__file__).resolve().parents[1] / "web"
 NODE = shutil.which("node")
-MODULES = ("shared/config.js", "features/live-cells/rows.js")
+MODULES = ("shared/config.js", "shared/channels.js", "features/live-cells/rows.js")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node isn't installed")
 
 
@@ -54,21 +54,15 @@ def step():
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_the_scatter_prefixes_are_the_packages(js):
-    from datanuggets_flow._defaults import FLOW_SCATTER_PREFIXES
-
-    assert js("return config.LIVECELLS_SCATTER_PREFIXES;") == list(FLOW_SCATTER_PREFIXES)
-
-
-def test_the_dropdowns_offer_markers_only(js, step):
-    """Forward and side scatter (every FSC and SSC channel, -A, -H and -B alike) and Time are
-    never offered; every other channel of the file is, in the file's order."""
+def test_the_dropdowns_offer_every_channel_but_time(js, step):
+    """Every channel of the file is offered in the file's order, forward and side scatter too, so
+    a file from any instrument can be filtered on any of its channels; only Time is not."""
     channels = step["channels"]
-    got = js(f"return rows.markerChannels({json.dumps(channels)}).map(c => c.pnn);")
+    got = js(f"return rows.filterChannels({json.dumps(channels)}).map(c => c.pnn);")
     pnn = [c["pnn"] for c in channels]
-    left_out = [c for c in pnn if c not in got]
-    assert left_out == ["FSC-A", "FSC-H", "SSC-A", "SSC-B-A", "SSC-B-H", "SSC-H", "Time"]
-    assert got == [c for c in pnn if c not in left_out] and len(got) == 32
+    assert [c for c in pnn if c not in got] == ["Time"]
+    assert got == [c for c in pnn if c != "Time"] and len(got) == 38
+    assert {"FSC-A", "SSC-B-H"} <= set(got)
     names = [
         "FSC-A",
         "SSC-W",
@@ -81,8 +75,8 @@ def test_the_dropdowns_offer_markers_only(js, step):
         "CD3-FSC",
         "Timestamp",
     ]
-    assert js(f"return {json.dumps(names)}.map(rows.isMarker);") == [
-        False, False, False, False, False, False, True, True, True, True
+    assert js(f"return {json.dumps(names)}.map(rows.canFilter);") == [
+        True, True, False, False, False, False, True, True, True, True
     ]  # fmt: skip
 
 
@@ -92,14 +86,17 @@ def test_the_first_rows_are_the_two_roles_on_the_suggestion(js, step):
         {"role": "viability", "channel": "FJComp-LIVE DEAD Blue-A", "keep": "<"},
         {"role": "cd45", "channel": "FJComp-PerCP-A", "keep": ">"},
     ]
-    # a suggestion that is a scatter channel, or none, leaves its row on None
-    odd = {"viability": "SSC-A", "cd45": None, "candidates": {"viability": [], "cd45": []}}
+    # a suggestion that is the time channel, or none, leaves its row on None; scatter is taken
+    odd = {"viability": "Time", "cd45": None, "candidates": {"viability": [], "cd45": []}}
     got = js(f"return rows.startRows({json.dumps(odd)}).map(r => r.channel);")
     assert got == [None, None]
+    odd["viability"] = "SSC-A"
+    got = js(f"return rows.startRows({json.dumps(odd)}).map(r => r.channel);")
+    assert got == ["SSC-A", None]
 
 
-def test_rows_add_up_to_the_markers_and_only_added_ones_go(js, step):
-    """Added rows start on None, keeping above; as many rows as marker channels, fewer under a
+def test_rows_add_up_to_the_channels_and_only_added_ones_go(js, step):
+    """Added rows start on None, keeping above; as many rows as channels offered, fewer under a
     server's cap; the two role rows stay. Added rows are numbered among themselves, from 1."""
     sug = json.dumps(step["suggested"])
     got = js(

@@ -38,7 +38,8 @@ def post_gate(body: GateRequest, request: Request, ws: WS):
     check_one_dataset(recs, "gate", "uploads")
     paths = [str(s.uploads.path(ws, rec)) for rec in recs]
     with refusals():
-        settings = flow.gate_settings(body.settings, len(paths))
+        first = [c["name"] for c in recs[0].get("columns", [])]
+        settings = flow.gate_settings(body.settings, len(paths), first)
     ip = check_job_room(request)
     gid = ws.next_id("gates")
     spec = {

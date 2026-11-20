@@ -1,7 +1,7 @@
 """datanuggets_flow.livecells: the channels whose names look like a viability dye or CD45, the
-scatter channels a set refuses, the step's defaults, the cells a set's populations keep, and a
-set's values, histograms and counts. suggest, scatter, defaults, load and count run in the
-FastAPI process; the rest run in a job worker. None of them places or proposes a threshold."""
+step's defaults, the cells a set's populations keep, and a set's values, histograms and counts.
+suggest, defaults, load and count run in the FastAPI process; the rest run in a job worker. None
+of them places or proposes a threshold."""
 
 from __future__ import annotations
 
@@ -16,14 +16,6 @@ def suggest(pnn: Sequence[str], pns: Sequence[str]) -> dict:
     from datanuggets_flow.livecells import suggest_channels
 
     return suggest_channels(list(pnn), list(pns))
-
-
-def scatter(channels: Sequence[str]) -> list[str]:
-    """The channels that are forward or side scatter, by the rule the default clustering channels
-    use: a $PnN starting with one of FLOW_SCATTER_PREFIXES."""
-    from datanuggets_flow._defaults import FLOW_SCATTER_PREFIXES
-
-    return [c for c in channels if c.startswith(FLOW_SCATTER_PREFIXES)]
 
 
 def defaults() -> dict:

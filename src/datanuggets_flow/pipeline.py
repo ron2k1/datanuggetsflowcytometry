@@ -1,8 +1,8 @@
 """The datanuggets-flow run as library steps, which a backend calls without the CLI: nothing here
 reads the terminal or prints to it. A step reports what the CLI prints as a StageEvent, whose
 message the CLI prints and whose data a backend reads. read_fcs reads a file with flowio, which
-loads only when a file is read, and read_ranges its header alone, for a backend that shows the
-channels' ranges; pandas loads in the steps that make tables, scikit-learn only for the t-SNE, and
+loads only when a file is read, and read_ranges its header alone, for the gate's off-scale rule
+(on_scale) and a backend that shows the channels' ranges; pandas loads in the steps that make tables, scikit-learn only for the t-SNE, and
 matplotlib only for the figures.
 
 The steps live in datanuggets_flow._pipeline, a module per job: fcs reads a file, records holds
@@ -20,6 +20,7 @@ from datanuggets_flow._pipeline.clustering import (
     MIN_OCCUPIED_NUGGETS,
     _kept_cells,
     cluster_nuggets,
+    default_channels,
     make_nuggets,
     negative_tally,
     pooled_scaling,
@@ -28,7 +29,14 @@ from datanuggets_flow._pipeline.clustering import (
 )
 from datanuggets_flow._pipeline.cofactor import NegativeTally, auto_cofactor, resolve_cofactor
 from datanuggets_flow._pipeline.fcs import decode_ranges, read_fcs, read_ranges
-from datanuggets_flow._pipeline.gating import gate_files, population_stats, population_table
+from datanuggets_flow._pipeline.gating import (
+    gate_channels,
+    gate_files,
+    on_channels,
+    on_scale,
+    population_stats,
+    population_table,
+)
 from datanuggets_flow._pipeline.records import (
     Cofactor,
     Kept,

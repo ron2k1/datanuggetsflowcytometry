@@ -20,17 +20,23 @@ FINDER_T12 = 20
 FINDER_T22 = 0.5
 
 
-# datanuggets-flow's defaults: the scatter channels it gates on; reference, cfc.py's mirrored_area,
-# as the area rule, where the library's lymphmacro_finder defaults to find_area; the channels it
-# clusters, every -A channel but the scatter ones; the arcsinh cofactor; the Scale stage, each
+# datanuggets-flow's defaults: reference, cfc.py's mirrored_area, as the area rule, where the
+# library's lymphmacro_finder defaults to find_area; the channels it clusters, every -A channel but
+# the scatter ones, named with FLOW_SCATTER_PREFIXES (every channel but those and Time when a file
+# has fewer than two, FLOW_TIME_PATTERN below); the arcsinh cofactor; the Scale stage, each
 # channel centred and scaled to SD 1 by its mean and SD pooled over the files; nuggets per file,
 # where create_dn's own default is DN_NUM2; every core for create_dn, which doesn't change its
-# results; the clusters; and the output folder, named by the UTC time a run starts
-FLOW_FSC = "FSC-A"
-FLOW_SSC = "SSC-A"
+# results; the clusters; and the output folder, named by the UTC time a run starts. No channel
+# name is fixed: the gate takes the first file's forward and side scatter by their prefixes,
+# preferring an -A channel, or its marker channels when it has none (gate_channels). FS and SS
+# take FSC-A and SSC-A as well as a Beckman Navios's FS INT and SS INT. Events past a gate
+# channel's range ($PnR), up to FLOW_OFFSCALE_MAX of a file's events, are left out of the
+# finder's grid and of every population; more than that and the range doesn't describe the
+# values, so every event is gated
 FLOW_DISC = "reference"
 FLOW_CHANNEL_SUFFIX = "-A"
-FLOW_SCATTER_PREFIXES = ("FSC", "SSC")
+FLOW_SCATTER_PREFIXES = ("FS", "SS")
+FLOW_OFFSCALE_MAX = 0.01
 # the Transform stage's cofactor. "auto" picks one per clustered channel, once per run and before
 # any arcsinh, from the raw values of the cells the run clusters (the populations kept, after the
 # row filters, in the files it keeps): a channel with at least FLOW_COFACTOR_MIN_NEGATIVE of those

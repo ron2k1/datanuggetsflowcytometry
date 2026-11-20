@@ -3,6 +3,8 @@ ranges, and every refusal: 411, 413, 415, 422 and 507, all on the 202 FCS file."
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import httpx
 import numpy as np
 
@@ -76,12 +78,42 @@ def test_an_upload_reads_the_uploads_under_the_workspace_lock(make_client, fcs_2
     assert records.free and not any(records.free), records.free
 
 
+def test_an_fcs_file_is_known_by_its_header_whatever_its_name(make_client, fcs_202, tmp_path):
+    """Some instruments name their FCS files otherwise, as a FACSCalibur's .B08: the header says
+    what a file is, so its name is kept and it is read like any other. A CSV is refused by its
+    header too."""
+    c = make_client()
+    for name in ("202.B08", "202.LMD", "202"):
+        r = upload(c, fcs_202, name=name)
+        assert r.status_code == 201, name
+        u = r.json()
+        assert (u["name"], u["kind"], u["rows"]) == (name, "fcs", 50_000)
+    csv = tmp_path / "iris.csv"
+    csv.write_text("a,b\n1,2\n")
+    err = assert_error(upload(c, csv), 415, "unsupported_type")
+    assert err["message"] == "This is not an FCS 2.0, 3.0 or 3.1 file."
+
+
+def test_a_name_the_system_keeps_is_refused_and_removed(make_client, fcs_202, monkeypatch):
+    """Windows keeps NUL for a device, so the upload can't be moved to that name there. It is
+    refused, naming the file field, and its folder goes, as every refusal's does."""
+    move = Path.replace
+
+    def replace(self, target):
+        if Path(target).name == "NUL":
+            raise OSError(183, "the name is a device's")
+        return move(self, target)
+
+    monkeypatch.setattr(Path, "replace", replace)
+    c = make_client()
+    err = assert_error(upload(c, fcs_202, name="NUL"), 422, "invalid_setting", "file")
+    assert err["message"] == "This file's name can't be saved here; rename it and try again."
+    ws = c.app.state.dn.workspaces.local()
+    assert [p.name for p in ws.dir("uploads").iterdir()] == []
+
+
 def test_refusals(make_client, fcs_202, tmp_path):
     c = make_client()
-    # a CSV is refused like any other type that is not FCS
-    for name in ("202.txt", "iris.csv", "202.CSV"):
-        err = assert_error(upload(c, fcs_202, name=name), 415, "unsupported_type")
-        assert err["message"] == "Upload an .fcs file.", name
     fake = tmp_path / "fake.fcs"
     fake.write_bytes(b"NOTFCS" + b"\0" * 100)
     assert_error(upload(c, fake), 415, "unsupported_type")

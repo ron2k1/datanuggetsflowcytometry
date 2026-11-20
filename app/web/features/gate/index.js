@@ -4,7 +4,8 @@ import { el, docHead, seg } from '../../shared/dom.js';
 import { svg } from '../../shared/icons.js';
 import { fmtInt, plural } from '../../shared/format.js';
 import { api } from '../../shared/api/index.js';
-import { DISC, GATE_SCATTER } from '../../shared/config.js';
+import { DISC } from '../../shared/config.js';
+import { gateChannels } from '../../shared/channels.js';
 import { datasetKey, stainDiffs, stainText } from '../../shared/datasets.js';
 import { EV } from '../../shared/events.js';
 import { S, emit, subscribe, fcsUploads, datasetOf, caps, getGate, gateById, gateLog } from '../../shared/store.js';
@@ -17,11 +18,6 @@ const startJob = async (request, what) => emit(EV.jobStarted, { res: await reque
 const listOf = s => s.split(/[,\s]+/).filter(Boolean).map(Number);
 
 const perGate = () => (caps() || {}).fcs_files_per_gate || Infinity;
-// A scatter dropdown's options: the channels named with its prefix, or all of them when none is.
-const scatterOf = (chans, prefix) => {
-  const s = chans.filter(([name]) => name.toUpperCase().startsWith(prefix));
-  return s.length ? s : chans;
-};
 
 // A new form ticks this file and, when it came in one batch with others, the batch's files among
 // fcs (its dataset's), up to the workspace's files-per-gate cap.
@@ -29,7 +25,7 @@ function gateForm(u, fcs) {
   const d = (S.config && S.config.defaults && S.config.defaults.gate) || {};
   const mine = new Set(fcs.map(x => x.id));
   const batch = S.lastBatch.includes(u.id) ? [u.id, ...S.lastBatch.filter(id => id !== u.id && mine.has(id))].slice(0, perGate()) : [u.id];
-  return { uploads: new Set(batch), fsc: d.fsc || 'FSC-A', ssc: d.ssc || 'SSC-A', disc: d.disc || 'reference',
+  return { uploads: new Set(batch), fsc: d.fsc || null, ssc: d.ssc || null, disc: d.disc || 'reference',
     t11: (d.t11 || []).join(', '), t21: (d.t21 || []).join(', '), t12: d.t12, t22: d.t22, n_row: d.n_row, n_col: d.n_col };
 }
 
@@ -92,13 +88,19 @@ function gateSection(u, st) {
   // A gate takes files from one dataset (the server refuses others): the opened file's.
   const d = datasetOf(u.id), fcs = d ? d.files : [u];
   const f = st.form || (st.form = gateForm(u, fcs));
+  // Both dropdowns offer every channel. Each starts on its choice when this file has it, else on
+  // the channel the package's rule takes (forward and side scatter, or marker channels in a file
+  // without them), so the form sends the channel it shows.
+  const names = u.columns.map(x => x.name), has = x => (names.includes(x) ? x : null);
   const chans = u.columns.map(x => [x.name, x.label ? `${x.name} · ${x.label}` : x.name]);
+  [f.fsc, f.ssc] = gateChannels(names, has(f.fsc), has(f.ssc));
   const max = perGate();
   const msg = el('span', { class: 'grow' });
   const go = el('button', { type: 'button', class: 'btn primary', html: svg('play') + '<span>Find populations</span>', onclick: async () => {
     const ids = fcs.filter(x => f.uploads.has(x.id)).map(x => x.id);
     const t11 = listOf(f.t11), t21 = listOf(f.t21);
     const problem = !ids.length ? 'Pick at least one FCS file.' : ids.length > max ? `Gate at most ${max} files at once here.`
+      : f.fsc && f.fsc === f.ssc ? 'Choose two different channels for X and Y.'
       : [1, ids.length].includes(t11.length) && [1, ids.length].includes(t21.length) ? null : 't11 and t21 take one value, or one per file.';
     if (problem) { msg.textContent = problem; msg.className = 'grow note err'; return; }
     go.disabled = true;
@@ -113,8 +115,8 @@ function gateSection(u, st) {
       ...done.map(g => el('button', { type: 'button', class: 'linkbtn', text: `Open gate ${g.id}`, onclick: () => openTab(`gate:${g.id}`) }))) : null,
     filesBox(f, fcs, datasetKey(u)),
     el('div', { class: 'form-grid', style: 'margin-top:10px' },
-      selectField(f, 'fsc', 'Forward scatter', scatterOf(chans, GATE_SCATTER.fsc)),
-      selectField(f, 'ssc', 'Side scatter', scatterOf(chans, GATE_SCATTER.ssc)),
+      selectField(f, 'fsc', 'X channel', chans, { hint: 'Forward scatter when the file has it' }),
+      selectField(f, 'ssc', 'Y channel', chans, { hint: 'Side scatter when the file has it' }),
       selectField(f, 'disc', 'Area rule', DISC, { wide: true, hint: 'Reference reproduces the original gates. Peak-centred centres each area on its peak; they differ for peaks off the diagonal.' })),
     el('details', { class: 'more' }, el('summary', { text: 'Peak finder thresholds' }),
       el('div', { class: 'form-grid' },

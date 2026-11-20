@@ -24,7 +24,7 @@ import numpy as np
 
 from datanuggets_flow import gate, grid, peaks
 from datanuggets_flow._defaults import FLOW_COFACTOR_AUTO, FLOW_COFACTOR_WIDE
-from datanuggets_flow._pipeline.gating import population_table
+from datanuggets_flow._pipeline.gating import on_channels, population_table
 from datanuggets_flow._pipeline.records import Cofactor, Pool, PopStats, Sample, Scaling
 from datanuggets_flow._pipeline.selection import pops_spec
 from datanuggets_flow.exceptions import FlowError
@@ -161,8 +161,11 @@ def _write_json(path: Path, record: Mapping[str, object]) -> Path:
 
 def save_gates(folder: Path, samples: Sequence[Mapping], settings: GateSettings) -> Path:
     """gates.npz and then gates.json in folder, beside local_maxima.png and gates.png: the record
-    load_gates reads. A folder without gates.json is refused, so one whose saving stopped
-    partway isn't read as whole. The path of gates.json."""
+    load_gates reads, its settings naming the two channels gated on, settled as gate_files settles
+    them. A folder without gates.json is refused, so one whose saving stopped partway isn't read
+    as whole. The path of gates.json."""
+    if samples:
+        settings = on_channels(settings, samples[0]["pnn"])
     arrays, files = {}, []
     for s in samples:
         n, path = s["number"], Path(s["path"]).absolute()

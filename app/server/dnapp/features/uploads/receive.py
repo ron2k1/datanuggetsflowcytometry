@@ -9,7 +9,7 @@ from pathlib import Path
 from python_multipart.multipart import MultipartParser, parse_options_header
 from starlette.requests import Request
 
-from dnapp.core.config import FCS_MAGIC, KB, MB, UPLOAD_KINDS, Settings
+from dnapp.core.config import FCS_MAGIC, KB, MB, UPLOAD_KIND, Settings
 from dnapp.core.errors import ApiError
 from dnapp.core.workspace import Workspace, safe_name
 
@@ -22,14 +22,6 @@ class _TooLarge(Exception):
 
 class _BadMagic(Exception):
     pass
-
-
-class _BadType(Exception):
-    pass
-
-
-def kind_of(name: str) -> str | None:
-    return UPLOAD_KINDS.get(Path(name).suffix.lower())
 
 
 def used_bytes(ws: Workspace) -> int:
@@ -49,7 +41,6 @@ class _Receiver:
         self.in_file = False
         self.done = False
         self.name: str | None = None
-        self.kind: str | None = None
         self.cap: int | None = None
         self.handle = None
         self.size = 0
@@ -87,9 +78,6 @@ class _Receiver:
             self.in_file = False
             return
         self.name = filename.decode("utf-8", "replace")
-        self.kind = kind_of(self.name)
-        if self.kind is None:
-            raise _BadType()
         caps = [c for c in (self.settings.caps.upload_fcs_bytes, self.room) if c is not None]
         self.cap = min(caps) if caps else None
         self.handle = open(self.folder / PARTIAL, "wb")  # noqa: SIM115 (closed in close())
@@ -121,8 +109,8 @@ class _Receiver:
 async def receive(
     request: Request, ws: Workspace, settings: Settings, uid: str
 ) -> tuple[Path, str]:
-    """The uploaded file streamed into uploads/<uid>/, as (path, kind). Every refusal removes the
-    folder."""
+    """The uploaded file streamed into uploads/<uid>/, as (path, kind). It is taken as an FCS file
+    by its header, whatever its name. Every refusal removes the folder."""
     ctype, params = parse_options_header(request.headers.get("content-type", ""))
     if ctype != b"multipart/form-data" or b"boundary" not in params:
         raise ApiError(
@@ -158,9 +146,6 @@ async def receive(
     except _TooLarge:
         _drop(folder, rec)
         raise ApiError("too_large", _too_large_message(settings, room)) from None
-    except _BadType:
-        _drop(folder, rec)
-        raise ApiError("unsupported_type", "Upload an .fcs file.") from None
     except _BadMagic:
         _drop(folder, rec)
         raise ApiError("unsupported_type", "This is not an FCS 2.0, 3.0 or 3.1 file.") from None
@@ -178,8 +163,16 @@ async def receive(
         taken = {u["name"] for u in ws.records("uploads").values()}
     name = safe_name(rec.name, taken)
     dest = folder / name
-    (folder / PARTIAL).replace(dest)
-    return dest, rec.kind
+    try:
+        (folder / PARTIAL).replace(dest)
+    except OSError:  # a name the system keeps for itself, as Windows keeps NUL for a device
+        _drop(folder, rec)
+        raise ApiError(
+            "invalid_setting",
+            "This file's name can't be saved here; rename it and try again.",
+            "file",
+        ) from None
+    return dest, UPLOAD_KIND
 
 
 def _too_large_message(settings: Settings, room: int | None) -> str:

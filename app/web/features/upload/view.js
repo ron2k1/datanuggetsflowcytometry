@@ -2,7 +2,7 @@
 // render(upload, tabState) -> Node, where tabState is this tab's S.view entry.
 import { el, docHead } from '../../shared/dom.js';
 import { fmtBytes, fmtInt, fmtNum, plural } from '../../shared/format.js';
-import { isMarkerChannel } from '../../shared/cofactor.js';
+import { isTime } from '../../shared/channels.js';
 import { largest, stainText } from '../../shared/datasets.js';
 import { api } from '../../shared/api/index.js';
 import { S, uploadById, idOf, datasets, datasetOf } from '../../shared/store.js';
@@ -21,7 +21,7 @@ function datasetLines(u) {
 }
 
 function statsTable(u) {
-  // An FCS channel's range from its header ($PnR), shown only for the marker channels: a Time
+  // An FCS channel's range from its header ($PnR), shown for every channel but Time: a Time
   // channel's header range need not bound its values (an Aurora file's decodes to 0.0185 against
   // values up to about 181). An upload made before ranges were recorded has none, and shows no
   // Range column.
@@ -29,12 +29,12 @@ function statsTable(u) {
   const body = el('tbody', {}, ...u.columns.map(c => el('tr', {},
     el('td', { text: c.name }), el('td', { text: c.label || '' }),
     el('td', { class: 'num', text: fmtNum(c.min) }), el('td', { class: 'num', text: fmtNum(c.max) }), el('td', { class: 'num', text: fmtNum(c.mean) }),
-    ranged ? el('td', { class: 'num', text: isMarkerChannel(c.name) ? fmtNum(c.range) : '' }) : null)));
+    ranged ? el('td', { class: 'num', text: isTime(c.name) ? '' : fmtNum(c.range) }) : null)));
   return el('div', {},
     el('div', { class: 'tbl-wrap stats-wrap' }, el('table', { class: 'tbl' },
       el('thead', {}, el('tr', {}, el('th', { text: 'Channel' }), el('th', { text: 'Marker' }),
         el('th', { class: 'num', text: 'Min' }), el('th', { class: 'num', text: 'Max' }), el('th', { class: 'num', text: 'Mean' }),
-        ranged ? el('th', { class: 'num', text: 'Range', title: 'The channel’s range in the file header ($PnR); blank for scatter and Time' }) : null)),
+        ranged ? el('th', { class: 'num', text: 'Range', title: 'The channel’s range in the file header ($PnR); blank for Time' }) : null)),
       body)),
     el('div', { class: 'form-actions', style: 'margin-top:8px' }, el('span', { class: 'muted', text: `${u.columns.length} channels` })));
 }

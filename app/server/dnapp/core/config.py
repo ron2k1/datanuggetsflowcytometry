@@ -77,7 +77,9 @@ MAX_PCS = 5  # plot payload PCs: min(5, p)
 LOG_TAIL = 50  # Job.log_tail lines
 SAFE_NAME_MAX = 100
 FCS_MAGIC = (b"FCS2.0", b"FCS3.0", b"FCS3.1")
-UPLOAD_KINDS = {".fcs": "fcs"}
+# every upload's kind: an FCS file, known by its header (FCS_MAGIC) whatever its name, since some
+# instruments name theirs otherwise (a FACSCalibur's .B08, a .LMD)
+UPLOAD_KIND = "fcs"
 CSV_INJECTION_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 GATE_FIGURES = ("local_maxima.png", "gates.png")
 

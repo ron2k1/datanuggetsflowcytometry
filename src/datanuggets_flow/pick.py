@@ -1,5 +1,6 @@
 """Pick the cells to cluster from the gate figures, then cluster them: each FCS file is gated on
-FSC-A against SSC-A with Cabrera's lymphmacro_finder, its numbered populations are shown and
+two channels (its forward against side scatter unless --fsc and --ssc name others) with Cabrera's
+lymphmacro_finder, its numbered populations are shown and
 counted, you choose which to keep (one, several, or all, file by file), and the kept events'
 fluorescence channels go into data nuggets per file and weighted k-means (WCluster's Wkmeans, or
 with --method tree the hierarchical tree) of all the files' nuggets together, so a cluster is the
@@ -56,20 +57,37 @@ from datanuggets_flow._pick.args import (
 from datanuggets_flow._pick.prompt import _ask, _choose_pops, _live_input  # noqa: F401
 from datanuggets_flow.exceptions import FlowError
 from datanuggets_flow.pipeline import parse_pops, pick_events  # noqa: F401
-from datanuggets_flow.settings import ClusterSettings, cli_flag
+from datanuggets_flow.settings import ClusterSettings, GateSettings, cli_flag
+
+
+@contextmanager
+def _printed_warnings():
+    """Each DataNuggetWarning raised in the block printed once, when it is raised, as a line of
+    the run's output; other warnings (flowio's, scikit-learn's) shown as they would have been."""
+    show, seen = warnings.showwarning, set()
+
+    def line(message, category, filename, lineno, file=None, text=None):
+        if not issubclass(category, DataNuggetWarning):
+            show(message, category, filename, lineno, file, text)
+        elif str(message) not in seen:
+            seen.add(str(message))
+            print(f"warning: {message}")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("always", DataNuggetWarning)
+        warnings.showwarning = line
+        yield
 
 
 def read_fcs(path) -> tuple[np.ndarray, list[str], list[str]]:
     """pipeline.read_fcs, its spillover warning printed as a line of the run's output. Every step
     reads through this name, so a test can stand in for the FCS reader."""
-    with warnings.catch_warnings(record=True, action="always", category=DataNuggetWarning) as w:
-        found = pipeline.read_fcs(path)
-    for caught in w:
-        if issubclass(caught.category, DataNuggetWarning):
-            print(f"warning: {caught.message}")
-        else:  # flowio's own, shown as they would have been
-            warnings.warn_explicit(caught.message, caught.category, caught.filename, caught.lineno)
-    return found
+    with _printed_warnings():
+        return pipeline.read_fcs(path)
+
+
+# the reader above, which _ranges tells from a test's stand-in for it
+_READ_FCS = read_fcs
 
 
 def _pyplot(no_show: bool, *, tables: bool, tsne: bool):
@@ -108,6 +126,12 @@ def _read(path):
     return read_fcs(path)
 
 
+def _ranges(path):
+    """The file's channel ranges, for the gate's off-scale rule, when this module's read_fcs reads
+    it; none for a test's stand-in for read_fcs, which has no file behind it."""
+    return pipeline.read_ranges(path) if read_fcs is _READ_FCS else ([], [])
+
+
 # the line saying where each gate figure is, in the order they are drawn, the same in every mode
 DRAWN = {
     "local_maxima.png": "\nThe local maxima and each Pop's peak are drawn in",
@@ -121,26 +145,31 @@ def _print_drawn(folder: Path, *names: str) -> None:
         print(f"{DRAWN[name]} {folder / name}")
 
 
-def _gate_files(paths, settings, out, plt) -> list[dict]:
+def _gate_files(paths, settings, out, plt) -> tuple[list[pipeline.Sample], GateSettings]:
     """The one-shot run's gate step: each file gated by pipeline.gate_files, its populations
     printed as it goes, then the density grid, local maxima and the peak each Pop grows from
     drawn on one figure, local_maxima.png, the one the populations are chosen from. gates.png
-    waits for the choice."""
+    waits for the choice. The samples, and settings with the channels the step settled on."""
     from datanuggets_flow.figures import local_maxima_figure, save_figures
 
-    samples = pipeline.gate_files(paths, settings, read=_read, on_event=_print_event)
-    figs = {"local_maxima.png": local_maxima_figure(samples, figure=plt.figure)}
+    samples = pipeline.gate_files(
+        paths, settings, read=_read, ranges=_ranges, on_event=_print_event
+    )
+    settings = pipeline.on_channels(settings, samples[0]["pnn"])
+    channels = (settings.fsc, settings.ssc)
+    figs = {"local_maxima.png": local_maxima_figure(samples, channels=channels, figure=plt.figure)}
     save_figures(figs, out, FLOW_GATE_DPI)
     _print_drawn(out, "local_maxima.png")
-    return samples
+    return samples, settings
 
 
-def _draw_gates(samples, plt, out) -> None:
+def _draw_gates(samples, settings, plt, out) -> None:
     """gates.png, once the populations are chosen: each file's events in gray and each of its
-    populations in color, one panel per file."""
+    populations in color, one panel per file, on the scatter channels settings gated on."""
     from datanuggets_flow.figures import gates_figure, save_figures
 
-    save_figures({"gates.png": gates_figure(samples, figure=plt.figure)}, out, FLOW_GATE_DPI)
+    fig = gates_figure(samples, channels=(settings.fsc, settings.ssc), figure=plt.figure)
+    save_figures({"gates.png": fig}, out, FLOW_GATE_DPI)
     _print_drawn(out, "gates.png")
 
 
@@ -198,23 +227,30 @@ def _run(args) -> None:
     with _marked(out):
         if stop:  # nothing is asked between the figures, so the library's stage writes the folder
             pipeline.gate_stage(
-                paths, out, gate, read=_read, on_event=_print_event, figure=plt.figure
-            )
-            _print_drawn(out, *DRAWN)
-        else:
-            samples = _gate_files(paths, gate, out, plt)
-            _choose_channels(samples, args.channels, args.exclude_channels)
-            chosen = _choose_pops(samples, args.pops, plt, not args.no_show)
-            _draw_gates(samples, plt, out)
-            pipeline.cluster_stage(
-                samples,
-                chosen,
+                paths,
                 out,
-                cluster,
+                gate,
                 read=_read,
+                ranges=_ranges,
                 on_event=_print_event,
                 figure=plt.figure,
             )
+            _print_drawn(out, *DRAWN)
+        else:
+            samples, gate = _gate_files(paths, gate, out, plt)
+            _choose_channels(samples, args.channels, args.exclude_channels)
+            chosen = _choose_pops(samples, args.pops, plt, not args.no_show)
+            _draw_gates(samples, gate, plt, out)
+            with _printed_warnings():
+                pipeline.cluster_stage(
+                    samples,
+                    chosen,
+                    out,
+                    cluster,
+                    read=_read,
+                    on_event=_print_event,
+                    figure=plt.figure,
+                )
     if stop:
         where = out.resolve()
         print(f"\nGates are in {where}")
@@ -267,15 +303,16 @@ def _from_gates(args, cluster: ClusterSettings) -> None:
     with _marked(out):
         for path in figures:
             shutil.copyfile(path, out / path.name)
-        run = pipeline.cluster_stage(
-            samples,
-            chosen,
-            out,
-            cluster,
-            read=_read,
-            on_event=_print_event,
-            figure=plt.figure,
-        )
+        with _printed_warnings():
+            run = pipeline.cluster_stage(
+                samples,
+                chosen,
+                out,
+                cluster,
+                read=_read,
+                on_event=_print_event,
+                figure=plt.figure,
+            )
         state.write_run(
             out,
             gates.path,
