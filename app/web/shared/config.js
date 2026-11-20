@@ -27,13 +27,14 @@ export const HOVER_DEBOUNCE_MS = 40;    // legend hover highlight
 export const LIVECELLS_BINS = 128;      // histogram bins the Live cells step asks for (contract-livecells 2.4)
 export const COUNTS_QUIET_MS = 300;     // Live cells: quiet after a line moves before POST .../counts
 export const PICK_QUIET_MS = 400;       // Live cells: quiet after a channel pick before POST .../livecells
-// Live cells: channels its dropdowns never offer. Forward and side scatter are set in the gate
-// settings; the prefixes are the package's FLOW_SCATTER_PREFIXES (app/tests pins them). The
-// upload view shows header ranges only for the other channels (shared/cofactor.js isMarkerChannel).
-export const LIVECELLS_SCATTER_PREFIXES = ['FSC', 'SSC'];
-// A dataset's colour channels: the names that end in this and do not start with a scatter prefix
-// above, the package's default clustering rule (its FLOW_CHANNEL_SUFFIX; app/tests pins it).
+// The package's channel-name constants, which shared/channels.js applies by its rules (app/tests
+// pins them): forward and side scatter by prefix (FLOW_SCATTER_PREFIXES: FSC-A and SSC-A, and a
+// Beckman Navios's FS INT and SS INT), the area suffix (FLOW_CHANNEL_SUFFIX), and the time
+// channel (FLOW_TIME_PATTERN, matched ignoring case: Time, Time (s), HDR-T). None names a channel
+// a file must have.
+export const FLOW_SCATTER_PREFIXES = ['FS', 'SS'];
 export const FLOW_CHANNEL_SUFFIX = '-A';
+export const FLOW_TIME_RE = /^(time|hdr-t)\b/i;
 // POST /datasets's limits, the server's DATASET_* (core/config.py), which the fixture transport
 // checks as the server does; a length counts code points.
 export const DATASET_NAME_MAX = 60;     // characters in a dataset's name
@@ -41,12 +42,6 @@ export const DATASET_CHANNELS_MAX = 512; // channels in one request
 export const DATASET_CHANNEL_CHARS = 100; // characters in one channel name
 export const DATASET_CHANNELS_BYTES = 16000; // one channel list, as Python's json.dumps writes it
 export const DATASETS_MAX = 100;        // names one workspace keeps; at the cap, those of sets no upload has go
-// The time channel: Time, Time (s), and HDR-T as some cytometers name it; the package's
-// FLOW_TIME_PATTERN, matched ignoring case (app/tests pins it).
-export const LIVECELLS_TIME_RE = /^(time|hdr-t)\b/i;
-// Gate settings: the Forward and Side scatter dropdowns offer only the channels whose names start
-// with these (FSC-A, FSC-H, ...), or every channel when a file has none.
-export const GATE_SCATTER = { fsc: 'FSC', ssc: 'SSC' };
 export const CLICK_SLOP_PX = 5;         // a press that moves further is a drag, not a click
 
 // Marker look: solid, opaque, no outline. Sizes in px. The nugget sizes are for a run of up to

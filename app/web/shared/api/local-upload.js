@@ -72,7 +72,6 @@ function fcsUpload(buf) {
 }
 
 export async function readLocalUpload(file, onProgress) {
-  if (!/\.fcs$/i.test(file.name)) throw refusal('unsupported_type', 'Only .fcs files are accepted.');
   const buf = await readBuffer(file, onProgress);
   let parsed;
   try {

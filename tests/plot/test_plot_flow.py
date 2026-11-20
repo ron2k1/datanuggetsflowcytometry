@@ -36,10 +36,27 @@ def test_gates_draws_the_events_then_each_population():
     assert all(line.get_linestyle() == "None" for line in ax.get_lines())
     assert all(line.get_rasterized() for line in ax.get_lines())
     assert ax.get_title() == "Sample 1: FSC-A vs SSC-A"
-    assert (ax.get_xlabel(), ax.get_ylabel()) == ("FSC-A", "SSC-A")
+    assert (ax.get_xlabel(), ax.get_ylabel()) == ("", "")  # no channels given, none assumed
     legend = ax.get_legend()
     assert legend is not None
     assert [t.get_text() for t in legend.get_texts()] == ["Unlabeled", "Pop 1", "Pop 3"]
+
+
+def test_the_figures_name_the_channels_gated_on():
+    """A file gated on FSC-H and SSC-H, as a heights-only file is, shows those names on both
+    figures' axes. Without channels the axes name none, since no channel name is assumed."""
+    fsc, ssc, masks = _data()
+    ax = gates(fsc, ssc, masks, channels=("FSC-H", "SSC-H"))
+    assert (ax.get_xlabel(), ax.get_ylabel()) == ("FSC-H", "SSC-H")
+    fig, ax = plt.subplots()
+    peaks(_peaks(), ax=ax, channels=("FSC-H", "SSC-H"))
+    want = ("FSC-H (sqrt-scaled grid)", "SSC-H (sqrt-scaled grid)")
+    assert (ax.get_xlabel(), ax.get_ylabel()) == want
+    plt.close(fig)
+    fig, ax = plt.subplots()
+    peaks(_peaks(), ax=ax)
+    assert (ax.get_xlabel(), ax.get_ylabel()) == ("(sqrt-scaled grid)", "(sqrt-scaled grid)")
+    plt.close(fig)
 
 
 def test_gates_skips_empty_populations_in_the_color_cycle():

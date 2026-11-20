@@ -5,12 +5,14 @@ them."""
 
 from __future__ import annotations
 
+import re
+import warnings
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import numpy as np
-from datanuggets import RDraws, create_dn, cut_tree, whclust, wkmeans, wwcss
+from datanuggets import DataNuggetWarning, RDraws, create_dn, cut_tree, whclust, wkmeans, wwcss
 
 from datanuggets_flow._defaults import (
     FLOW_CHANNEL_SUFFIX,
@@ -18,6 +20,7 @@ from datanuggets_flow._defaults import (
     FLOW_METHOD,
     FLOW_NUM_INIT,
     FLOW_SCATTER_PREFIXES,
+    FLOW_TIME_PATTERN,
     SEED,
 )
 from datanuggets_flow._pipeline.cofactor import NegativeTally
@@ -44,13 +47,25 @@ MIN_KEPT_EVENTS = 2  # create_dn needs two rows; a file keeping fewer is left ou
 MIN_OCCUPIED_NUGGETS = 3  # the fewest nuggets in use that the clustering is run on
 
 
+def default_channels(pnn: Sequence[str]) -> list[str]:
+    """The channels clustered when none are named, in pnn's order: every -A channel but forward
+    and side scatter (FLOW_SCATTER_PREFIXES), or every channel but those and Time when there are
+    fewer than two, as on instruments that record no areas."""
+    markers = [c for c in pnn if not c.startswith(FLOW_SCATTER_PREFIXES)]
+    channels = [c for c in markers if c.endswith(FLOW_CHANNEL_SUFFIX)]
+    if len(set(channels)) < 2:
+        time = re.compile(FLOW_TIME_PATTERN, re.IGNORECASE | re.ASCII)  # as the app's page
+        channels = [c for c in markers if not time.match(c)]
+    return channels
+
+
 def resolve_channels(
     samples: Sequence[Mapping], settings: ClusterSettings
 ) -> tuple[list[str], list[str]]:
     """The fluorescence channels to cluster, the same ones in every file, and their labels:
-    settings.channels, or every -A channel of the first file but FSC and SSC, less
-    settings.exclude_channels, refused by check_channels when they aren't two or more distinct
-    ones. A label is the channel's $PnS with its $PnN, or the $PnN alone."""
+    settings.channels, or the first file's default_channels, less settings.exclude_channels,
+    refused by check_channels when they aren't two or more distinct ones. A label is the first
+    file's $PnS with the $PnN, or the $PnN alone."""
     first = samples[0]
     pnn, pns = first["pnn"], first["pns"]
     for c in settings.exclude_channels:
@@ -60,14 +75,7 @@ def resolve_channels(
                 f"{', '.join(pnn)}",
                 "exclude_channels",
             )
-    if settings.channels is not None:
-        channels = list(settings.channels)
-    else:
-        channels = [
-            c
-            for c in pnn
-            if c.endswith(FLOW_CHANNEL_SUFFIX) and not c.startswith(FLOW_SCATTER_PREFIXES)
-        ]
+    channels = default_channels(pnn) if settings.channels is None else list(settings.channels)
     channels = [c for c in channels if c not in settings.exclude_channels]
     check_channels(channels)
     for s in samples:
@@ -78,6 +86,44 @@ def resolve_channels(
                 "channels",
             )
     return channels, [f"{pns[pnn.index(c)]} ({c})" if pns[pnn.index(c)] else c for c in channels]
+
+
+def warn_stain_differences(samples: Sequence[Mapping], channels: Sequence[str]) -> None:
+    """A DataNuggetWarning naming each of channels whose stain ($PnS) differs between the files,
+    with each stain and the files that give it, since resolve_channels labels a channel with the
+    first file's stain alone. A file without a stain for the channel never differs."""
+    parts = []
+    for c in channels:
+        files: dict[str, list[str]] = {}
+        for s in samples:
+            stain = s["pns"][s["pnn"].index(c)].strip()
+            if stain:
+                files.setdefault(stain, []).append(s["path"].name)
+        if len(files) > 1:
+            parts.append(
+                f"{c} is " + " or ".join(f"{k} ({', '.join(v)})" for k, v in files.items())
+            )
+    if parts:
+        warnings.warn(
+            f"Stains differ between files: {'; '.join(parts)}. The run labels each channel with "
+            f"{samples[0]['path'].name}'s stain; check that the files name the same markers",
+            DataNuggetWarning,
+            stacklevel=2,
+        )
+
+
+def _warn_constant(channels: Sequence[str], constant: np.ndarray) -> None:
+    """A DataNuggetWarning naming the channels that take one value in every clustered cell."""
+    names = [c for c, k in zip(channels, constant) if k]
+    if names:
+        one = len(names) == 1
+        warnings.warn(
+            f"{', '.join(names)} {'takes' if one else 'each take'} one value in every clustered "
+            f"cell, so {'it adds' if one else 'they add'} nothing to the clusters; leave "
+            f"{'it' if one else 'them'} out of the channels to cluster",
+            DataNuggetWarning,
+            stacklevel=3,
+        )
 
 
 def _each_file(
@@ -117,7 +163,21 @@ def _each_file(
         rows, x = np.flatnonzero(keep), None
         if len(rows) >= least:
             x, rows = _kept_cells(s, rows, channels, settings.cofactor, read, filters)
+            _refuse_non_finite(s["path"].name, channels, x)
         yield i, s, x, rows
+
+
+def _refuse_non_finite(name: str, channels: Sequence[str], x: np.ndarray) -> None:
+    """A channel holding NaN or an infinite value among the cells to cluster, as a processed
+    file's label column can, refused by name, so every clustering pass stops the same way. Live
+    cells reads the same cells and counts NaN instead."""
+    bad = [c for c, ok in zip(channels, np.isfinite(x).all(axis=0)) if not ok]
+    if bad:
+        raise FlowError(
+            f"{name} holds values that aren't numbers (NaN or infinite) in {', '.join(bad)} among "
+            f"the cells kept; leave {'it' if len(bad) == 1 else 'them'} out of the channels to "
+            "cluster"
+        )
 
 
 def _nothing_kept() -> FlowError:
@@ -227,18 +287,21 @@ def make_nuggets(
     cells; "numpy" passes the int seed. settings.row_filters, on the raw events, AND with the
     populations chosen. A file keeping fewer than MIN_KEPT_EVENTS once filtered is left out, and
     without being read when its populations alone keep too few. A "nuggets" event per file
-    carries its line. filtered, when given, gets each file's kept cells that pass the filters by
+    carries its line, and a channel that takes one value in every cell kept gives a
+    DataNuggetWarning. filtered, when given, gets each file's kept cells that pass the filters by
     file number, and cells each clustered file's outputs.sample_cells, its values in the
     transform's units."""
     from datanuggets_flow.outputs import sample_cells
 
     seed = RDraws(settings.seed) if settings.draws == "r" else settings.seed
     kept = []
+    low = high = np.full(len(channels), np.nan)
     for i, s, x, rows in _each_file(samples, chosen, channels, settings, read):
         if filtered is not None:
             filtered[i + 1] = len(rows)
         if len(rows) < MIN_KEPT_EVENTS:
             continue  # left out, or too few cells for data nuggets
+        low, high = np.fmin(low, x.min(axis=0)), np.fmax(high, x.max(axis=0))
         xs = x if scaling is None else scaling.apply(x)
         dn = create_dn(
             xs,
@@ -260,6 +323,7 @@ def make_nuggets(
             on_event(StageEvent("nuggets", i + 1, len(samples), line, data))
     if not kept:
         raise _nothing_kept()
+    _warn_constant(channels, low == high)
     return kept
 
 

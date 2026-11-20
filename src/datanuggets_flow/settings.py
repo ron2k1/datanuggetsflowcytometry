@@ -33,7 +33,6 @@ from datanuggets_flow._defaults import (
     FLOW_DISC,
     FLOW_DN_NUM2,
     FLOW_DRAWS,
-    FLOW_FSC,
     FLOW_GROUP_NAME,
     FLOW_K,
     FLOW_LEGACY_CENTER_METHOD,
@@ -44,7 +43,6 @@ from datanuggets_flow._defaults import (
     FLOW_METHODS,
     FLOW_N_JOBS,
     FLOW_NUM_INIT,
-    FLOW_SSC,
     FLOW_STANDARDIZE,
     SEED,
     SEED_MAX,
@@ -147,14 +145,16 @@ class _Settings:
 
 @dataclass(frozen=True, kw_only=True)
 class GateSettings(_Settings):
-    """The gate finder's settings: the scatter channels it gates on, disc, the area rule
-    (reference for cfc.py's mirrored_area, the reference code's gates; peak for find_area, the
-    disc on the peak), and lymphmacro_finder's thresholds and window. t11 and t21, the first
-    peak's, give one value for every file or one per file, as cfc.py's per-file values do. disc
-    his, the reference rule's old name, is read as reference, so older gate records still load."""
+    """The gate finder's settings: the two channels it gates on, fsc across and ssc up (None: the
+    first file's forward or side scatter, or a marker channel when it has none, by the gate
+    step's gate_channels), disc, the area rule (reference for cfc.py's mirrored_area, the
+    reference code's gates; peak for find_area, the disc on the peak), and lymphmacro_finder's
+    thresholds and window. t11 and t21, the first peak's, give one value for every file or one
+    per file, as cfc.py's per-file values do. disc his, the reference rule's old name, is read as
+    reference, so older gate records still load."""
 
-    fsc: str = FLOW_FSC
-    ssc: str = FLOW_SSC
+    fsc: str | None = None
+    ssc: str | None = None
     disc: str = FLOW_DISC
     t11: tuple[float, ...] = (FINDER_T11,)
     t21: tuple[float, ...] = (FINDER_T21,)
@@ -172,6 +172,16 @@ class GateSettings(_Settings):
         value, or one per file."""
         if self.disc not in AREAS:
             raise FlowError(f"{{param}} is {self.disc!r}; it takes {' or '.join(AREAS)}", "disc")
+        for name in ("fsc", "ssc"):
+            value = getattr(self, name)
+            if value is not None and not (isinstance(value, str) and value):
+                raise _refused(name, repr(value), "a channel's name, or none for the default")
+        if self.ssc is not None and self.fsc == self.ssc:
+            raise FlowError(
+                f"{{param}} is {self.ssc!r}, the gate's other channel too; gate on two different "
+                "channels",
+                "ssc",
+            )
         for name in ("t11", "t21"):
             got = len(getattr(self, name))
             if not got:
@@ -210,8 +220,8 @@ class GateSettings(_Settings):
 
 @dataclass(frozen=True, kw_only=True)
 class ClusterSettings(_Settings):
-    """The clustering stage's settings: the channels to cluster (None for every -A channel but
-    FSC and SSC, less exclude_channels), the Transform stage, arcsinh(x / cofactor) of them (0
+    """The clustering stage's settings: the channels to cluster (None for pipeline's
+    default_channels, less exclude_channels), the Transform stage, arcsinh(x / cofactor) of them (0
     keeps them linear; a number applies to every channel; "auto", the default, is the cofactors
     pipeline.resolve_cofactor picks, one per channel, from the raw values of the cells the run
     clusters when the stage runs, and is kept as asked; the steps after it take those as a tuple),

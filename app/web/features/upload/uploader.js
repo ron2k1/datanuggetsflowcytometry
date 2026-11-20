@@ -1,5 +1,6 @@
 // Uploads the user starts, FCS files only: the file chooser (EV.filesPick) and dropped files
-// (EV.filesDrop). Files in flight sit in S.inflight; each move emits EV.uploadsChange. Every
+// (EV.filesDrop). A file is known as FCS by its header, whatever its name (a FACSCalibur names its
+// files .B08), so the server, or the local reader, refuses the others. Files in flight sit in S.inflight; each move emits EV.uploadsChange. Every
 // upload of a batch gets a tab: a plain batch shows its last upload, while a batch whose sender
 // passed done(uploads) opens its tabs behind the current one, hands the uploads to done and
 // redraws. S.lastBatch keeps the last batch's ids. Each dataset the batch made while another was
@@ -18,8 +19,6 @@ const moved = () => emit(EV.uploadsChange);
 const pending = new Set();
 
 function precheck(file) {
-  const ext = (file.name.split('.').pop() || '').toLowerCase();
-  if (ext !== 'fcs') return 'Only .fcs files are accepted.';
   // The same name and size is the same file again; a second copy would count its sample twice.
   if (allUploads().some(u => u.name === file.name && u.bytes === file.size)) return `${file.name} is already uploaded.`;
   const cap = (caps() || {}).upload_fcs_bytes;
@@ -68,7 +67,7 @@ async function uploadFiles(files, { done = null } = {}) {
 
 // The chooser's options wait here until its change event; each pick replaces them.
 let picking = {};
-const fileInput = Object.assign(document.createElement('input'), { type: 'file', multiple: true, accept: '.fcs' });
+const fileInput = Object.assign(document.createElement('input'), { type: 'file', multiple: true });
 fileInput.hidden = true;
 fileInput.addEventListener('change', () => { const fs = [...fileInput.files]; fileInput.value = ''; uploadFiles(fs, picking); });
 function pickFiles(opts) {

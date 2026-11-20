@@ -487,6 +487,24 @@ def test_the_gate_form_takes_files_from_the_opened_files_dataset(page):
     ]
 
 
+def test_the_gate_form_refuses_one_channel_for_x_and_y(page):
+    """The gate takes two channels, so the form refuses the same one for X and Y before it asks
+    the server, which would refuse it too."""
+    got = page(
+        "emit(EV.openTab, { key: 'upload:u3' }); await tick();"
+        " const field = name => $('#editor').findAll('field')"
+        "   .find(l => l.kids[0].textContent === name).kids[1];"
+        " const asked = []; api.startGate = async body => { asked.push(body); return {}; };"
+        " for (const s of [field('X channel'), field('Y channel')]) {"
+        "   s.value = 'SSC-A'; s.dispatch('change'); }"
+        " $('#editor').findAll('primary').at(-1).click(); await tick();"
+        " const msg = $('#editor').findAll('form-actions').at(-1)"
+        "   .kids.find(k => k.classList.contains('grow'));"
+        " return [asked.length, msg.className, msg.textContent];"
+    )
+    assert got == [0, "grow note err", "Choose two different channels for X and Y."]
+
+
 def test_a_mixed_batch_spends_the_cap_only_on_the_opened_files_dataset(page):
     """The last batch's files of other datasets take none of the files-per-gate cap (8): a batch
     of six files of Dataset 2, then nine of Dataset 1, ticks the opened file and the batch's first
@@ -597,21 +615,22 @@ def test_a_batch_announces_each_dataset_it_makes(page, panels):
 
 def test_a_batchs_notes_follow_its_refusal_and_failure_toasts(page, panels):
     """The page has one toast, so a note shown at once would hide the last file's refusal or
-    failure; the notes wait their turn after it. 202.txt is 202.fcs's bytes under a name the
-    uploader refuses, and 202-cut.fcs its first 64 bytes, which the reader cannot parse."""
+    failure; the notes wait their turn after it. 202.txt is six bytes that are not an FCS file,
+    which the reader refuses by its header, and 202-cut.fcs is 202.fcs's first 64 bytes, which it
+    cannot parse."""
     got = page(
         read_in_tab(panels) + " const real = setTimeout; let at = 0; const seen = [];"
         " globalThis.setTimeout = (f, ms = 0, ...a) => real(() => { const was = at; at = ms; try { f(...a); } finally { at = was; } }, 0);"
         " Object.defineProperty($('#toast'), 'textContent', { get() { return this.own; },"
         "   set(v) { this.own = String(v); seen.push([at, this.own]); } });"
         " const whole = await file('202.fcs'), less = await file('202-less.fcs');"
-        " const txt = { ...whole, name: '202.txt' }, cut = { ...whole, name: '202-cut.fcs', size: 64, buf: whole.buf.slice(0, 64) };"
+        " const txt = { name: '202.txt', size: 6, buf: new TextEncoder().encode('NOTFCS').buffer }, cut ={ ...whole, name: '202-cut.fcs', size: 64, buf: whole.buf.slice(0, 64) };"
         " emit(EV.filesDrop, { files: [whole, txt, less, cut] }); await until(2);"
         " for (let i = 0; i < 50 && seen.length < 4; i++) await tick();"
         " return seen;"
     )
     four, five = new_note(4, FLUOR), new_note(5, FLUOR[:2])
-    assert got[0] == [0, "Only .fcs files are accepted."]
+    assert got[0] == [0, "202.txt: This is not an FCS 2.0, 3.0 or 3.1 file."]
     assert got[1][0] == 0 and got[1][1].startswith("202-cut.fcs: ")
     assert got[2:] == [[3600, four], [7200, five]]
 

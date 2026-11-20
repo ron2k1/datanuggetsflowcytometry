@@ -398,9 +398,12 @@ block was `{"range_max": 262144, "narrow": 150.0, "wide": 6000.0}`, the header r
 
 ### 3.3 Uploads
 
-`POST /uploads` multipart, one field `file`. `.fcs` by extension; any other name, `.csv`
-included, is 415 `unsupported_type` ("Upload an .fcs file."). The file must start with `FCS2.0`,
-`FCS3.0` or `FCS3.1` (else 415), and one the reader cannot parse is 422 `unreadable_file`.
+`POST /uploads` multipart, one field `file`. An FCS file is known by its header, whatever its
+name, since some instruments name theirs otherwise (a FACSCalibur's `.B08`): the file must start
+with `FCS2.0`, `FCS3.0` or `FCS3.1`, else 415 `unsupported_type` ("This is not an FCS 2.0, 3.0
+or 3.1 file."), and one the reader cannot parse is 422 `unreadable_file`. The name is kept, made
+safe. A name the system keeps for itself, such as `NUL` on Windows, is 422 `invalid_setting`
+(param `file`) and the upload is removed.
 Trial: `Content-Length` required (411), size checked while streaming (413, partial file
 deleted). -> 201 `Upload`:
 ```json
@@ -419,12 +422,13 @@ readers treat a missing key as unknown.
 `GET /uploads` -> `{"uploads": [Upload]}`. `GET /uploads/{uid}` -> Upload.
 `DELETE /uploads/{uid}` -> 204 (409 when a gate uses it).
 
-Datasets. An FCS upload's colour channels are the `$PnN` names in its `columns` that end in `-A`
-and do not start with `FSC` or `SSC` (the package's `FLOW_CHANNEL_SUFFIX` and
-`FLOW_SCATTER_PREFIXES`), compared exactly as stored. Their order, the stains (`$PnS`), Time and
-`-H`/`-W` channels do not count. The uploads whose colour channels are the same set are one
-dataset, and a gate takes files from one dataset (3.4). The page groups uploads into datasets
-(`shared/datasets.js`); the server keeps only the names given to them.
+Datasets. An FCS upload's colour channels are the `$PnN` names in its `columns` that the
+package's `pipeline.default_channels` clusters, compared exactly as stored: those that end in
+`-A` and do not start with `FS` or `SS`, or, when there are fewer than two, every channel but
+scatter and Time (flow-only-and-datasets.md part 2). Their order and the stains (`$PnS`) do not
+count. A channel with no `$PnN` is named `P` and its number. The uploads whose colour channels
+are the same set are one dataset, and a gate takes files from one dataset (3.4). The page groups
+uploads into datasets (`shared/datasets.js`); the server keeps only the names given to them.
 
 `POST /datasets` `{"channels": [pnn], "name": str}` -> 200 `{"datasets": [Dataset]}`, every name
 in the workspace, Dataset = `{"id": "d1", "channels": [pnn], "name": str}` with `channels` sorted.
@@ -477,7 +481,9 @@ job (param `channels`).
              "gates": "/api/v1/flow/gates/g1/figures/gates.png"}}
 ```
 `files` is `[]` until done. `color` from `population_colors`. `default_channels` = every `-A`
-channel but FSC/SSC (the package's rule). `GET /flow/gates/{gid}/figures/{local_maxima.png|gates.png}` -> image/png.
+channel but scatter (`FS`, `SS`), or every channel but those and Time when fewer than two (the package's
+rule). `settings.fsc` and `settings.ssc` name the two channels the gate took, set or settled on
+file 1 by the package's `gate_channels`. `GET /flow/gates/{gid}/figures/{local_maxima.png|gates.png}` -> image/png.
 `DELETE /flow/gates/{gid}` -> 204 (409 while the gate's job is running, a run from it is
 queued/running, or a live-cells set of it is loading; [deleting.md](deleting.md)).
 
@@ -933,8 +939,8 @@ fixture builder nor `smoke.py` reads it.
   CSV upload with `GET /uploads/{uid}/rows`, the general branches of runs, plot and cells, the
   iris and California housing demos with their CSVs, and the AIS set in `app/demo/large.json`
   (nkg2a stays). `POST /runs/general` and `GET /uploads/{uid}/rows` answer 404 `not_found`, and a
-  `.csv` upload is refused like any other unknown type: 415 `unsupported_type`, "Upload an .fcs
-  file." The Upload JSON loses `preview`, the run manifest loses `methods`, and
+  CSV upload is refused like any other file that isn't FCS: 415 `unsupported_type`, "This is not
+  an FCS 2.0, 3.0 or 3.1 file." The Upload JSON loses `preview`, the run manifest loses `methods`, and
   `/runs/{rid}/plot` and `/cells` lose the `method` query parameter (FastAPI ignores it if sent).
   `/config` loses `defaults.general` and the caps `upload_csv_bytes`, `csv_rows`, `csv_columns`,
   `general_nuggets_max` and `general_intermediate_max`. A local workspace from before can still

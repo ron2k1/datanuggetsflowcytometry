@@ -46,9 +46,11 @@ def _gated(tmp_path):
 
 
 def test_save_then_load_gates_round_trips(tmp_path):
+    """The record names the channels gated on, which settings left to the files' scatter."""
     gates, samples, settings = _gated(tmp_path)
     loaded = state.load_gates(gates)
-    assert (loaded.path, loaded.settings) == (gates, settings)
+    assert (settings.fsc, settings.ssc) == (None, None)
+    assert (loaded.path, loaded.settings) == (gates, replace(settings, fsc="FSC-A", ssc="SSC-A"))
     assert sorted(p.name for p in gates.iterdir()) == sorted(state.GATE_FILES)
     keys = ("number", "path", "n_events", "pnn", "pns", "stats", "table", "local_maxima")
     for got, want in zip(loaded.samples, samples, strict=True):

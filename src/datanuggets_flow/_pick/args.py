@@ -76,8 +76,9 @@ def _parser() -> argparse.ArgumentParser:
     gate, cluster = GateSettings(), ClusterSettings()
     p = argparse.ArgumentParser(
         prog="datanuggets-flow",
-        description="Gate FCS files on FSC-A vs SSC-A, keep the populations you pick, and cluster "
-        "their cells with data nuggets and weighted k-means (or the hierarchical tree).",
+        description="Gate FCS files on two channels (forward against side scatter unless --fsc "
+        "and --ssc name others), keep the populations you pick, and cluster their cells with data "
+        "nuggets and weighted k-means (or the hierarchical tree).",
     )
     p.add_argument("paths", nargs="*", help="FCS files, or folders of them; none with --from-gates")
     stage = p.add_mutually_exclusive_group()
@@ -177,13 +178,22 @@ def _parser() -> argparse.ArgumentParser:
     channels = p.add_mutually_exclusive_group()
     channels.add_argument(
         "--channels",
-        help="comma-separated channels to cluster (default: every -A channel but FSC and SSC)",
+        help="comma-separated channels to cluster (default: every -A channel but scatter, FS and "
+        "SS, or every channel but those and Time when a file has fewer than two)",
     )
     channels.add_argument(
         "--exclude-channels", help="comma-separated channels to leave out of the default ones"
     )
-    p.add_argument("--fsc", help=f"the channel gated as FSC (default: {gate.fsc})")
-    p.add_argument("--ssc", help=f"the channel gated as SSC (default: {gate.ssc})")
+    p.add_argument(
+        "--fsc",
+        help="the channel the gate takes across (default: the first file's forward scatter, an "
+        "FS channel ending -A first, or its first marker channel when it has none)",
+    )
+    p.add_argument(
+        "--ssc",
+        help="the channel the gate takes up (default: the first file's side scatter, an SS "
+        "channel ending -A first, or a marker channel when it has none)",
+    )
     p.add_argument(
         "--disc",
         type=lambda d: DISC_ALIASES.get(d, d),  # his, the old name, still works

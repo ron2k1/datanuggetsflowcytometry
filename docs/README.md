@@ -11,7 +11,7 @@
 | [Running the app locally](app/running-locally.md) | Running the app's Docker image, building it from source, its modes and where your files live |
 | [Development](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/development.md) | Setup, tests, lint and build checks |
 | [Architecture](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/ARCHITECTURE.md) | The repository's layers, which way they depend on each other, the tests that hold the boundaries, and where new code goes |
-| [Release notes](releases.md) | What `0.1.0a3`, the first alpha, contains |
+| [Release notes](releases.md) | What each alpha contains |
 | [Releasing](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/releasing.md) | The release workflows, one-time setup, testing a release candidate and publishing the tested commit |
 
 The data nuggets method and the weighted clustering come from the `datanuggets` library. Its [documentation](https://github.com/ron2k1/datanuggets/blob/main/docs/README.md) covers them.

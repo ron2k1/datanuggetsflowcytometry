@@ -56,25 +56,51 @@ def _panels(n: int, size: tuple[float, float], figure) -> tuple[Figure, np.ndarr
     return fig, axs
 
 
-def local_maxima_figure(samples: Sequence[Mapping], *, figure: Callable | None = None) -> Figure:
+def local_maxima_figure(
+    samples: Sequence[Mapping],
+    *,
+    channels: tuple[str, str] | None = None,
+    figure: Callable | None = None,
+) -> Figure:
     """local_maxima.png, the figure the populations are chosen from: one panel per file of its
-    density grid, local maxima and the peak each Pop grows from (flow_plot.peaks of its "peaks")."""
+    density grid, local maxima and the peak each Pop grows from (flow_plot.peaks of its "peaks"),
+    its axes named by channels, the two gated on, when given."""
     fig, axs = _panels(len(samples), (6.5, 5.2), figure)
     for i, s in enumerate(samples):
-        flow_plot.peaks(s["peaks"], title=f"File {i + 1}: {s['path'].name}", ax=axs[i])
+        title = f"File {i + 1}: {s['path'].name}"
+        flow_plot.peaks(s["peaks"], title=title, ax=axs[i], channels=channels)
     fig.tight_layout()
     return fig
 
 
-def gates_figure(samples: Sequence[Mapping], *, figure: Callable | None = None) -> Figure:
+def gates_figure(
+    samples: Sequence[Mapping],
+    *,
+    channels: tuple[str, str] | None = None,
+    figure: Callable | None = None,
+) -> Figure:
     """gates.png: one panel per file of its events in gray and each of its populations in color
-    (flow_plot.gates of its "fsc", "ssc" and "masks")."""
+    (flow_plot.gates of its "fsc", "ssc" and "masks"), its axes named by channels, the two gated
+    on, when given. A file whose events lie past the finder's grid, as the few past a channel's
+    range that the gate leaves out do, is drawn on the grid's extent, so its populations aren't
+    squeezed into a corner."""
     fig, axs = _panels(len(samples), (5.5, 4.8), figure)
     for i, s in enumerate(samples):
         title = f"File {i + 1}: {s['path'].name}"
-        flow_plot.gates(s["fsc"], s["ssc"], s["masks"], title=title, ax=axs[i])
+        flow_plot.gates(s["fsc"], s["ssc"], s["masks"], title=title, ax=axs[i], channels=channels)
+        p = s["peaks"]
+        if s["fsc"].max() > p.fsc.max() or s["ssc"].max() > p.ssc.max():
+            axs[i].set_xlim(_padded(p.fsc))
+            axs[i].set_ylim(_padded(p.ssc))
     fig.tight_layout()
     return fig
+
+
+def _padded(v) -> tuple[float, float]:
+    """v's extent with matplotlib's default margin of 5% on each side."""
+    lo, hi = float(np.min(v)), float(np.max(v))
+    pad = 0.05 * (hi - lo)
+    return lo - pad, hi + pad
 
 
 def result_figures(

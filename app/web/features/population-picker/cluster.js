@@ -157,7 +157,7 @@ export function renderCluster(doc, p) {
         numField(f, 'cells_per_file', 'Cells per file for the plot', { min: 0, int: true, max: c.cells_per_file_max, cap: true }),
         numField(f, 'seed', 'Seed', { min: 0, int: true }))),
     el('details', { class: 'more', open: !!st.dye }, chanSum, chanBox,
-      el('div', { class: 'note', text: 'The default is every -A channel except forward and side scatter.' }),
+      el('div', { class: 'note', text: 'The default is every -A channel except forward and side scatter, or every channel but those and Time when a file has fewer than two -A ones.' }),
       st.dye ? el('div', { class: 'note', text: `${nameOf(st.dye)} is unticked: the Live cells step left the viability dye out of the clustering. Tick it to cluster on it.` }) : null),
     el('details', { class: 'more', open: f.row_filters.length > 0 }, el('summary', { text: 'Row filters and t-SNE' }),
       filterBuilder(f.row_filters, filterCols, update),

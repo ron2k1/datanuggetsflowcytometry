@@ -1,9 +1,8 @@
 // Step "Live cells", the part in the population picker's slot 'gate.livecells': choose the
 // channels to filter on (a row for a viability dye and one for CD45, on the channels the package
-// names for them, and as many more as there are marker channels through "Add a channel"), load
+// names for them, and as many more as there are channels through "Add a channel"), load
 // their histograms for the chosen populations (a livecells job), place a line on each, and hand
-// the row filters on to the cluster form. The dropdowns list marker channels only, never forward
-// or side scatter (the gate settings take those) nor Time. Behaviour is
+// the row filters on to the cluster form. The dropdowns list every channel but Time. Behaviour is
 // docs/app/contract-livecells.md section 3; the rows are rows.js. Everything is kept in
 // ctx.state, so Back, a redraw or a finished job keeps the choices and the lines; late answers
 // redraw through state.view.
@@ -17,10 +16,10 @@ import { EV } from '../../shared/events.js';
 import { emit, subscribe, jobById, caps, upsert } from '../../shared/store.js';
 import { histogram, channelScale, roundIn } from './histogram.js';
 import { countsView, scheduleCounts, resetCounts, errText } from './counts.js';
-import { ROLES, isMarker, markerChannels, startRows, addRow, removeRow, rowName, maxRows, chosen, taken, clashes, rowFilters } from './rows.js';
+import { ROLES, canFilter, filterChannels, startRows, addRow, removeRow, rowName, maxRows, chosen, taken, clashes, rowFilters } from './rows.js';
 
 const KEEP = [['<', 'Keep below'], ['>', 'Keep above']];
-const SUB = 'Optional: drop dead cells and cells that are not leukocytes before clustering, and filter on other markers. The first two dropdowns start on the channels whose names look like a viability dye and CD45; Add a channel adds another. The dropdowns list marker channels only: forward and side scatter are set in the gate settings. Click a histogram to place a line, drag it or type a value to move it, and choose which side to keep. Lines are raw values, so the Transform chosen on the next step does not move them. Skip goes on without filters.';
+const SUB = 'Optional: drop dead cells and cells that are not leukocytes before clustering, and filter on other markers. The first two dropdowns start on the channels whose names look like a viability dye and CD45; Add a channel adds another. The dropdowns list every channel but Time. Click a histogram to place a line, drag it or type a value to move it, and choose which side to keep. Lines are raw values, so the Transform chosen on the next step does not move them. Skip goes on without filters.';
 
 const active = j => !!j && (j.status === 'queued' || j.status === 'running');
 const label = c => (c.pns ? `${c.pns} (${c.pnn})` : c.pnn);
@@ -150,19 +149,19 @@ export function render(host, ctx) {
       el('button', { type: 'button', class: 'btn sm', text: 'Try again', onclick: retry }));
   }
 
-  // Row i's dropdown: None and the marker channels, a channel another row holds shown but not
+  // Row i's dropdown: None and the channels offered, a channel another row holds shown but not
   // offered. A role row notes a missing suggestion; an added row can be removed.
-  function picker(row, i, markers) {
+  function picker(row, i, offered) {
     const info = s.info, sug = info.suggested || {}, role = ROLES.find(r => r.role === row.role);
     const name = rowName(row, i, s.rows), id = rowId(i), others = taken(s.rows, i);
     const nameOf = pnn => { const c = info.channels.find(x => x.pnn === pnn); return c ? label(c) : pnn; };
     const sel = el('select', { id, onchange: e => { row.channel = e.target.value || null; live.all(); } },
       el('option', { value: '', text: 'None' }),
-      ...markers.map(c => el('option', { value: c.pnn, disabled: others.has(c.pnn), text: others.has(c.pnn) ? `${label(c)}, in another row` : label(c) })));
+      ...offered.map(c => el('option', { value: c.pnn, disabled: others.has(c.pnn), text: others.has(c.pnn) ? `${label(c)}, in another row` : label(c) })));
     sel.value = row.channel || '';
     let note = null;
     if (role && !sug[role.role]) {
-      const cands = ((sug.candidates && sug.candidates[role.role]) || []).filter(isMarker);
+      const cands = ((sug.candidates && sug.candidates[role.role]) || []).filter(canFilter);
       note = cands.length ? `Several channels look like ${role.what}: ${cands.map(nameOf).join(', ')}. Choose one.`
         : `No channel's name looks like ${role.what}. Choose one, or leave it on None.`;
     }
@@ -172,10 +171,10 @@ export function render(host, ctx) {
       sel, note ? el('small', { text: note }) : null);
   }
 
-  // "Add a channel": a row per marker channel at most, fewer under the trial cap.
-  function adder(markers) {
-    const max = maxRows(markers.length, channelCap()), full = s.rows.length >= max;
-    const why = !full ? null : max < markers.length ? `This server filters on at most ${max} channels.` : 'Every marker channel has a row.';
+  // "Add a channel": a row per channel offered at most, fewer under the trial cap.
+  function adder(offered) {
+    const max = maxRows(offered.length, channelCap()), full = s.rows.length >= max;
+    const why = !full ? null : max < offered.length ? `This server filters on at most ${max} channels.` : 'Every channel has a row.';
     return el('div', { class: 'lc-add' },
       el('button', { type: 'button', class: 'btn sm', html: svg('plus') + '<span>Add a channel</span>', disabled: full,
         onclick: () => { s.focus = rowId(s.rows.length); s.rows = addRow(s.rows); live.all(); } }),
@@ -275,8 +274,8 @@ export function render(host, ctx) {
       bar.update();
       return;
     }
-    const markers = markerChannels(s.info.channels);
-    const pick = el('div', { class: 'form-grid lc-pick' }, ...s.rows.map((r, i) => picker(r, i, markers)));
+    const offered = filterChannels(s.info.channels);
+    const pick = el('div', { class: 'form-grid lc-pick' }, ...s.rows.map((r, i) => picker(r, i, offered)));
     const leave = dye(s) ? el('label', { class: 'check lc-leave' },
       el('input', { type: 'checkbox', checked: leaveOut(s), onchange: e => { s.leaveOut = e.target.checked; barUpdate(); } }),
       'Leave the viability dye out of the clustering') : null;
@@ -306,7 +305,7 @@ export function render(host, ctx) {
     const act = document.activeElement;
     const focusId = s.focus || (act && host.contains(act) && act.id) || null;
     s.focus = null;
-    fill(host, ctx.steps, head, pick, adder(markers), leave, ...main, bar.node);
+    fill(host, ctx.steps, head, pick, adder(offered), leave, ...main, bar.node);
     panels.forEach(p => p.redraw());
     bar.update();
     const back = focusId && document.getElementById(focusId);

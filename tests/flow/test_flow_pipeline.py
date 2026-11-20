@@ -15,6 +15,7 @@ from datanuggets import RDraws, create_dn, cut_tree, whclust, wkmeans, wmean, ww
 
 from datanuggets_flow import finder_peaks
 from datanuggets_flow._pipeline import clustering
+from datanuggets_flow._pipeline.gating import gate_notes
 from datanuggets_flow.exceptions import FlowError
 from datanuggets_flow.pipeline import (
     Kept,
@@ -22,6 +23,7 @@ from datanuggets_flow.pipeline import (
     PopStats,
     cluster_nuggets,
     cluster_stage,
+    gate_channels,
     gate_files,
     gate_stage,
     make_nuggets,
@@ -344,6 +346,37 @@ def test_parse_selection_one_for_all_or_one_per_file():
     assert str(e.value) == "pops: there is no Pop 5; this file has Pop 1 to Pop 4"
 
 
+def test_a_file_without_populations_is_named_so():
+    """A file whose finder kept no peak has no populations: asking for one says so, not "Pop 1 to
+    Pop 0", and none or all leave it out."""
+    with pytest.raises(FlowError) as e:
+        parse_selection("1;1", [2, 0])
+    assert str(e.value) == (
+        "pops: there is no Pop 1; this file has no populations; choose none for it"
+    )
+    assert parse_selection("1;none", [2, 0]) == parse_selection("1;all", [2, 0]) == [[1], []]
+
+
+def test_gate_lines_note_an_empty_population_and_a_file_without_peaks():
+    """An area the reference rule draws where there are no events, and a file with no peak kept,
+    each get a line saying why, in words the CLI and the app's log both read."""
+    full, empty = PopStats(1, 10, 50.0, 1.0, 1.0, (5, 5)), PopStats(2, 0, 0.0, 0.0, 0.0, (6, 6))
+    assert gate_notes([full, empty, empty._replace(pop=3)], 3, "reference") == [
+        (
+            "  Pop 2, Pop 3 hold no events: the reference area rule draws each area about the "
+            "peak mirrored across the diagonal, the peak-centred rule (disc peak) about the peak"
+        )
+    ]
+    assert gate_notes([full, empty], 2, "reference")[0].startswith("  Pop 2 holds no events")
+    assert gate_notes([full, empty], 2, "peak") == gate_notes([full], 1, "reference") == []
+    assert gate_notes([], 0, "peak") == [
+        (
+            "  No peak was kept, so this file has no populations: a few events far beyond the "
+            "rest can squeeze the others into the grid's edge, where no peak is kept"
+        )
+    ]
+
+
 def test_pops_spec_round_trips():
     chosen = [[1, 2], [], [1]]
     assert pops_spec(chosen) == "1,2;none;1"
@@ -443,16 +476,91 @@ def test_gate_files_gates_on_the_scatter_channels_it_is_given():
     assert all("median FSC-H" in line and ", SSC-H " in line for line in got["table"])
 
 
+def test_without_channels_set_gate_files_gates_on_each_files_own_scatter():
+    """No channel name is fixed: a heights-only file is gated on its FSC-H and SSC-H, as if they
+    were named, and a file that records no scatter on its first two marker channels."""
+    (want,) = _gated_202()
+    (got,) = gate_files([Path("202.fcs")], GateSettings(), read=_read_202_by_height)
+    assert np.array_equal(got["masks"], want["masks"])
+    assert "median FSC-H" in got["table"][0] and ", SSC-H " in got["table"][0]
+
+    def unnamed(path):  # no channel named as scatter, as a mass cytometer's file
+        x, names, stains = read_202(path)
+        return x, ["M1-A", "M2-A", *names[2:]], stains
+
+    (got,) = gate_files([Path("202.fcs")], GateSettings(), read=unnamed)
+    assert np.array_equal(got["masks"], want["masks"])
+    assert "median M1-A" in got["table"][0] and ", M2-A " in got["table"][0]
+
+
+@pytest.mark.parametrize(
+    ("pnn", "given", "want"),
+    [
+        # an Aurora's, as the PBMC demo's: the areas, though the heights come first
+        (
+            ["Time", "FSC-H", "FSC-A", "SSC-H", "SSC-A", "SSC-B-H", "SSC-B-A", "FL1-A"],
+            {},
+            ("FSC-A", "SSC-A"),
+        ),
+        (["FSC-H", "SSC-H", "FL1-H", "FL2-A", "Time"], {}, ("FSC-H", "SSC-H")),  # FACSCalibur
+        (["SSC-A", "FL1-H", "FL2-H", "Time"], {}, ("FL1-H", "SSC-A")),  # no forward scatter
+        (["Time", "Ce140Di", "Ir191Di", "Ir193Di"], {}, ("Ce140Di", "Ir191Di")),  # CyTOF
+        # one given: the other is never the same channel
+        (["FSC-A", "SSC-A", "FL1-A"], {"fsc": "SSC-A"}, ("SSC-A", "FL1-A")),
+        (["FSC-A", "SSC-A", "FL1-A"], {"ssc": "FSC-A"}, ("FL1-A", "FSC-A")),
+        (["FSC-A", "SSC-A"], {"fsc": "X", "ssc": "Y"}, ("X", "Y")),  # given ones stand as given
+        (["Time"], {}, (None, None)),  # nothing left to gate on
+    ],
+)
+def test_gate_channels_takes_the_files_own_channels(pnn, given, want):
+    assert gate_channels(pnn, **given) == want
+
+
+def test_a_file_with_no_channel_left_says_so():
+    def time_only(path):
+        return np.arange(10.0).reshape(10, 1), ["Time"], [""]
+
+    with pytest.raises(FlowError) as e:
+        gate_files([Path("t.fcs")], GateSettings(), read=time_only)
+    assert e.value.cli(cli_flag) == (
+        "t.fcs has no channel left to gate on; its channels: Time; set --fsc to one"
+    )
+
+
 @pytest.mark.parametrize(
     ("settings", "param", "channel"),
-    [(GateSettings(), "fsc", "FSC-A"), (GateSettings(fsc="FSC-H"), "ssc", "SSC-A")],
+    [
+        (GateSettings(fsc="FSC-A", ssc="SSC-H"), "fsc", "FSC-A"),
+        (GateSettings(fsc="FSC-H", ssc="SSC-A"), "ssc", "SSC-A"),
+    ],
 )
-def test_gate_files_refuses_a_file_without_a_scatter_channel(settings, param, channel):
+def test_gate_files_refuses_a_file_without_a_channel_named(settings, param, channel):
     pnn = _read_202_by_height(None)[1]
     with pytest.raises(FlowError) as e:
         gate_files([Path("202.fcs")], settings, read=_read_202_by_height)
     assert e.value.param == param
-    assert str(e.value) == f"202.fcs has no channel {channel}; its channels: {', '.join(pnn)}"
+    want = f"202.fcs has no channel {channel}; its channels: {', '.join(pnn)}; set {{}} to one"
+    assert str(e.value) == want.format(param)
+    assert e.value.cli(cli_flag) == want.format(f"--{param}")
+
+
+def test_gate_files_refuses_a_scatter_channel_that_is_not_all_numbers():
+    """A channel holding NaN, as a processed file's label column can, can't be gated on: the run
+    names the file, the channel and the flag, rather than the finder's ssc_a."""
+
+    def holed(path):
+        x, names, stains = _read_202_by_height(path)
+        x[::9, names.index("SSC-H")] = float("nan")
+        return x, names, stains
+
+    settings = GateSettings(fsc="FSC-H", ssc="SSC-H")
+    with pytest.raises(FlowError) as e:
+        gate_files([Path("202.fcs")], settings, read=holed)
+    assert e.value.param == "ssc"
+    assert e.value.cli(cli_flag) == (
+        "202.fcs's SSC-H holds values that aren't numbers (NaN or infinite); set --ssc to "
+        "another channel"
+    )
 
 
 @pytest.mark.parametrize(
@@ -636,6 +744,11 @@ def test_result_figures_leave_no_pyplot_figures(tmp_path, close_figures):
         "cluster_centers.png",
     ]
     assert sum(not ax.get_visible() for ax in figs["local_maxima.png"].axes) == 1
+    named = ("FSC-H", "SSC-H")  # the channels a heights-only file is gated on
+    ax = gates_figure([sample], channels=named).axes[0]
+    assert (ax.get_xlabel(), ax.get_ylabel()) == named
+    ax = local_maxima_figure([sample], channels=named).axes[0]
+    assert ax.get_xlabel() == "FSC-H (sqrt-scaled grid)"
     no_tsne = result_figures(pool, centers, LABELS, 0, None)
     assert list(no_tsne) == ["dendrogram.png", "clusters_pca.png", "cluster_centers.png"]
     saved = save_figures({"gates.png": figs["gates.png"]}, tmp_path, 110)

@@ -19,10 +19,9 @@ def check_pops(files: list[dict], pops: list[list[int]]) -> None:
         n = len(f["populations"])
         bad = [p for p in chosen if not 1 <= p <= n]
         if bad:
+            has = f"Pop 1 to Pop {n}" if n else "no populations"
             raise ApiError(
-                "invalid_setting",
-                f"{f['name']} has Pop 1 to Pop {n}; there is no Pop {bad[0]}.",
-                "pops",
+                "invalid_setting", f"{f['name']} has {has}; there is no Pop {bad[0]}.", "pops"
             )
     if not any(pops):
         raise ApiError("invalid_setting", "Choose populations in at least one file.", "pops")

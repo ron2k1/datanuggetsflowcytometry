@@ -24,13 +24,15 @@ from datanuggets_flow._pipeline.clustering import (
     pooled_scaling,
     resolve_channels,
     tsne_embedding,
+    warn_stain_differences,
 )
 from datanuggets_flow._pipeline.cofactor import resolve_cofactor
 from datanuggets_flow._pipeline.fcs import read_fcs
-from datanuggets_flow._pipeline.gating import gate_files
+from datanuggets_flow._pipeline.gating import gate_files, on_channels
 from datanuggets_flow._pipeline.records import (
     Cofactor,
     OnEvent,
+    RangesReader,
     Reader,
     RunResult,
     Sample,
@@ -52,20 +54,23 @@ def gate_stage(
     settings: GateSettings,
     *,
     read: Reader = read_fcs,
+    ranges: RangesReader | None = None,
     on_event: OnEvent | None = None,
     figure: Callable[..., Figure] | None = None,
 ) -> list[Sample]:
-    """The gate stage in the folder out, which must exist: each file gated by gate_files,
-    local_maxima.png and gates.png drawn on figure (see flow.figures), and the gate folder's
-    record saved by state.save_gates, gates.json last. cluster_stage clusters the samples it
-    gives, or the ones state.load_gates reads back from out."""
+    """The gate stage in the folder out, which must exist: each file gated by gate_files (read
+    and ranges are its), local_maxima.png and gates.png drawn on figure (see flow.figures), and
+    the gate folder's record saved by state.save_gates, gates.json last. cluster_stage clusters
+    the samples it gives, or the ones state.load_gates reads back from out."""
     from datanuggets_flow.figures import gates_figure, local_maxima_figure, save_figures
     from datanuggets_flow.state import save_gates
 
-    samples = gate_files(paths, settings, read=read, on_event=on_event)
+    samples = gate_files(paths, settings, read=read, ranges=ranges, on_event=on_event)
+    settings = on_channels(settings, samples[0]["pnn"])  # the channels gate_files settled on
+    channels = (settings.fsc, settings.ssc)
     figs = {
-        "local_maxima.png": local_maxima_figure(samples, figure=figure),
-        "gates.png": gates_figure(samples, figure=figure),
+        "local_maxima.png": local_maxima_figure(samples, channels=channels, figure=figure),
+        "gates.png": gates_figure(samples, channels=channels, figure=figure),
     }
     save_figures(figs, out, FLOW_GATE_DPI)
     save_gates(out, samples, settings)
@@ -177,6 +182,7 @@ def cluster_stage(
             "groups",
         )
     channels, labels = resolve_channels(samples, settings)
+    warn_stain_differences(samples, channels)
     selection = selection_table(samples, chosen)
     files = []
     if not settings.row_filters:

@@ -6,7 +6,7 @@
 
 A run does everything at once, or in two stages: `--gates-only` gates the files and saves the gates, and `--from-gates` chooses populations from them and clusters, as [Staged runs](#staged-runs) describes.
 
-`python -m pip install "datanuggets-flow==0.1.0a3"` installs the command with flowio, matplotlib, pandas and scikit-learn. In a clone, `uv sync` installs them and `uv run datanuggets-flow` runs it. The [quickstart](quickstart.md#a-first-datanuggets-flow-run) walks through a first run.
+`python -m pip install "datanuggets-flow==0.1.0a4"` installs the command with flowio, matplotlib, pandas and scikit-learn. In a clone, `uv sync` installs them and `uv run datanuggets-flow` runs it. The [quickstart](quickstart.md#a-first-datanuggets-flow-run) walks through a first run.
 
 > **Experimental workflow.** Each run creates a fresh folder under `outputs/` by default. Existing output paths are refused, and unfinished runs retain an `INCOMPLETE.txt` marker. Choose at least two distinct fluorescence channels and enough retained cells to make at least three occupied nuggets.
 
@@ -45,7 +45,7 @@ Each path is an FCS file or a folder of them. A folder gives its files whose suf
 
 Files and folders can be mixed. The files are numbered from 1 in the order of the arguments, with each folder's files in name order. Name order is string order, so `10.fcs` comes before `9.fcs`. That number is what per-file thresholds, `--pops` entries and the `N` in `nuggets_N.csv` and `events_N.csv` follow. The run prints `File N, name` for every file, and `selection.csv` records the numbering.
 
-flowio reads each file's events with `as_array(preprocess=True)`, as the file stores them. Channels are found by their `$PnN` names. Every file must have the `--fsc` and `--ssc` channels. The channels to cluster are taken from the first file, and every file must have them too.
+flowio reads each file's events with `as_array(preprocess=True)`, as the file stores them. Channels are found by their `$PnN` names. The gate takes two channels, `--fsc` across and `--ssc` up. One left out is the first file's forward scatter for `--fsc`, side scatter for `--ssc`: its first channel starting with `FS` (or `SS`) that ends in `-A`, else its first starting so, such as a Navios's `FS INT`, else the first of its default clustering channels, as on a mass cytometer, which records no scatter. The two are never one channel, and every file must have both. The channels to cluster are taken from the first file, and every file must have them too.
 
 A `--from-gates` run takes no paths. It reads the files its gate folder records, at the paths they were gated from.
 
@@ -56,8 +56,8 @@ A `--from-gates` run takes no paths. It reads the files its gate folder records,
 | `--gates-only` | off | Gate the files, draw `local_maxima.png` and `gates.png`, save the gates in `--out` and stop, without asking |
 | `--from-gates GATES` | none | Choose populations over the figures of `GATES`, a `--gates-only` folder, and cluster its files, which must not have changed |
 | `--out OUT` | `outputs/flow-<timestamp>`, or `outputs/flow-gates-<timestamp>` with `--gates-only` | New output folder, relative to the current directory. Existing paths are refused, including empty folders |
-| `--fsc FSC` | `FSC-A` | The channel gated as FSC |
-| `--ssc SSC` | `SSC-A` | The channel gated as SSC |
+| `--fsc FSC` | the first file's forward scatter | The channel the gate takes across, described above |
+| `--ssc SSC` | the first file's side scatter | The channel the gate takes up |
 | `--disc {reference,peak}` | `reference` | The area rule the gates use, described below |
 | `--t11 T11` | `22` | The first peak's distance threshold, one value or one per file |
 | `--t21 T21` | `0.25` | The first peak's density threshold, one value or one per file |
@@ -65,7 +65,7 @@ A `--from-gates` run takes no paths. It reads the files its gate folder records,
 | `--t22 T22` | `0.5` | Every other peak's density threshold, in every file |
 | `--n-row N_ROW`, `--n-col N_COL` | `11`, `11` | Rows and columns of the window the finder's local maxima are found in, 1 to 100 each |
 | `--pops POPS` | ask at the prompt | Populations to keep, in the prompt's grammar: one entry for every file, or one per file separated by `;` |
-| `--channels CHANNELS` | every `-A` channel but FSC and SSC | Comma-separated `$PnN` names. Give at least two distinct channels; clustering and PCA need two. The default takes names in the first file ending in `-A` that do not start with `FSC` or `SSC` |
+| `--channels CHANNELS` | every `-A` channel but scatter | Comma-separated `$PnN` names. Give at least two distinct channels; clustering and PCA need two. The default takes names in the first file ending in `-A` that do not start with `FS` or `SS`, the scatter prefixes, or, when it has fewer than two, every name but scatter and Time. See [Files from other instruments](#files-from-other-instruments) |
 | `--exclude-channels EXCLUDE_CHANNELS` | none | Comma-separated `$PnN` names to leave out of the default channels, such as a viability dye. Each must be a channel of the first file. Can't be combined with `--channels` |
 | `--cofactor COFACTOR` | `auto` | The Transform stage: fluorescence is clustered as `arcsinh(x / cofactor)`, or as stored with `0`. `auto` picks one per channel from the spread of its cells below 0, at least 150; see [Transform and Scale](#transform-and-scale). A number applies to every channel, and `0` keeps the channels linear. A negative, NaN or infinite value is refused |
 | `--no-standardize` | off | Skip the Scale stage, which by default scales every clustered channel to mean 0 and SD 1 over all clustered files' kept events. See [Transform and Scale](#transform-and-scale) |
@@ -89,7 +89,7 @@ A `--from-gates` run takes no paths. It reads the files its gate folder records,
 
 A flag left out takes the default above, which `--help` prints too. `--fsc` to `--n-col` set the gate stage, so `--from-gates` refuses them. `--pops` to `--cells-per-file` set the clustering stage, so `--gates-only` refuses them. `--tsne-perplexity` and `--tsne-seed` are refused with `--no-tsne`, which would ignore them, and `--num-init` and `--max-iter` are refused with `--method tree`, for the same reason.
 
-On the files of the Zenodo record the default channels are the 32 unmixed `FJComp-...-A` channels. `SSC-B-A` starts with `SSC`, so it's left out. A channel name with a space needs quotes, as in `--channels "FJComp-BV510-A,FJComp-Spark Blue-A"`.
+On the files of the Zenodo record the default channels are the 32 unmixed `FJComp-...-A` channels. `SSC-B-A` starts with `SS`, so it's left out. A channel name with a space needs quotes, as in `--channels "FJComp-BV510-A,FJComp-Spark Blue-A"`.
 
 #### Per-file thresholds
 
@@ -116,7 +116,7 @@ On `202.fcs`, `reference` gives populations of 225,770, 58,245 and 27,590 events
 
 #### At the prompt
 
-Without `--pops`, the run gates every file, prints each file's populations and asks. Each population line gives its event count, its share of the file's events, and its median on the `--fsc` and `--ssc` channels, FSC-A and SSC-A by default. `local_maxima.png` draws each file in its own panel: the density grid, every local maximum, and each kept peak labelled with its Pop number, so you choose from the peaks. `gates.png`, the populations' full gates, is drawn only after the choice. A `--from-gates` run asks with both figures already drawn by `--gates-only`, and shows both while it waits. From a run on three files of the Zenodo record, after the first answer:
+Without `--pops`, the run gates every file, prints each file's populations and asks. Each population line gives its event count, its share of the file's events, and its median on the two channels it was gated on, FSC-A and SSC-A on the demo files. `local_maxima.png` draws each file in its own panel: the density grid, every local maximum, and each kept peak labelled with its Pop number, so you choose from the peaks. `gates.png`, the populations' full gates, is drawn only after the choice. A `--from-gates` run asks with both figures already drawn by `--gates-only`, and shows both while it waits. From a run on three files of the Zenodo record, after the first answer:
 
 ```text
 Which populations hold the cells you want? Each file's Pop numbers label the peaks in its own panel of the local maxima figure, and the same number can be a different peak in another file. Type numbers like 1 or 1,2 or 1-3, "all", or "none" to leave the file out; Enter repeats the previous file's choice, Ctrl+C stops. Click this terminal before typing.
@@ -202,7 +202,7 @@ The step can filter on more marker channels than those two: each channel added i
 datanuggets-flow --from-gates outputs/gates-001 --pops "1,2" --filter "[FJComp-LIVE DEAD Blue-A] < VIABILITY_MAX" --filter "FJComp-PerCP-A > CD45_MIN" --filter "FJComp-BV510-A > CD3_MIN" --exclude-channels "FJComp-LIVE DEAD Blue-A" --out outputs/live-cd3-001
 ```
 
-The step offers marker channels only. Forward and side scatter (`FSC` and `SSC` channels) are set by `--fsc` and `--ssc` and the gate, and the app's live-cells request refuses them; the time channel is not offered either. `--filter` itself takes any channel. A trial server takes up to 8 channels in one live-cells set; the command line has no such cap.
+The step offers every channel but the time channel, forward and side scatter included. `--filter` itself takes any channel. A trial server takes up to 8 channels in one live-cells set; the command line has no such cap.
 
 ### Transform and Scale
 
@@ -368,7 +368,29 @@ If a run fails or is cancelled after creating its folder, partial figures and ta
 
 ### Spillover
 
-Events are clustered as stored, uncompensated. When a file's `$SPILLOVER` or `$SPILL` keyword holds a matrix with any entry more than 0.001 from the identity, the run prints `warning: NAME has a compensation matrix, but its events are clustered as stored, uncompensated` and goes on. It prints each time the file is read, so twice for a file whose events are clustered. A gate folder doesn't record the matrix, so `--from-gates` warns again when it reads the file. Spectral files are unmixed already. The four files of the Zenodo record tried here, `154`, `199`, `202` and `223`, carry no spillover keyword, so this warning hasn't been seen on real data.
+Events are clustered as stored, uncompensated. When a file's `$SPILLOVER` or `$SPILL` keyword holds a matrix with any entry more than 0.001 from the identity, the run prints `warning: NAME has a compensation matrix, but its events are clustered as stored, uncompensated` and goes on. It prints each time the file is read: when it's gated, and on each pass the clustering stage makes over its events, up to three (the auto cofactor's tally, the Scale stage and the nuggets). A gate folder doesn't record the matrix, so `--from-gates` warns again when it reads the file. Spectral files are unmixed already. The four files of the Zenodo record tried here, `154`, `199`, `202` and `223`, carry no spillover keyword, so this warning hasn't been seen on real data.
+
+### Files from other instruments
+
+The defaults fit a cytometer that records areas (`-A`) and forward and side scatter, as the PBMC demo's Cytek Aurora does. Files from other instruments run too, with these differences.
+
+- Scatter by prefix. A channel starting with `FS` or `SS` is scatter, so a Beckman Navios's `FS INT` and `SS INT` count as well as `FSC-A` and `SSC-A`. Scatter is gated on and never clustered by default.
+- Heights only, or no areas. When the first file has fewer than two channels ending in `-A` other than scatter, as a FACSCalibur's FCS 2.0 file or a mass cytometer's does, the default channels are every channel but Time and scatter. Instrument parameters such as a mass cytometer's `Event_length` are among them. Leave those out with `--exclude-channels`, or list the markers with `--channels`.
+- No `FSC-A` or `SSC-A`. The gate takes the first file's other scatter channels: `FSC-H` and `SSC-H` on a heights-only file, `FS INT` and `SS INT` on a Navios file. A file with no scatter, such as a mass cytometer's, is gated on its first two default channels, which are rarely the ones to gate cells on: name two with `--fsc` and `--ssc`, such as the DNA channels. The finder's cutoffs were set on scatter ([limitations](limitations.md#flow-cytometry)), so check the gates it draws.
+- Empty populations under the reference rule. On public files from an Aurora and an Attune, `--disc reference` drew areas holding no events, since it mirrors each peak's area across the diagonal. The gate lines say so, and `--disc peak` centres each area on its peak.
+- A few events past the detector's range. Left in, they squeeze the others into the edge of the finder's grid, where no peak is kept, as on a public CytoFLEX file. So when up to 1% of a file's events are past a gate channel's range (its `$PnR`), they are left out of the grid and of every population, and the gate lines say how many. When more are past it, the range doesn't describe the values and every event is gated. A file that still has no populations gets a line saying so, and its `--pops` entry can only be `none`, or `all`, which chooses nothing there too.
+- Files not named `.fcs`. Some instruments name their FCS files otherwise, as a FACSCalibur's `.B08`. Name such a file on the command line, since a folder is searched for `*.fcs` only. The app takes any file whose header says FCS 2.0, 3.0 or 3.1, whatever its name.
+- Mass cytometry counts. `--cofactor auto` never goes below 150, a floor for fluorescence. Mass cytometry is usually transformed with a cofactor of 5: pass `--cofactor 5`.
+- A channel without a name. FCS 2.0 makes `$PnN` optional. A channel without one is named `P` and its number, such as `P6` for the sixth, in flags, tables and labels.
+
+Two warnings help with mixed or unusual files. Each prints once as a `warning:` line, and the app lists them with the run's other warnings:
+
+- `Stains differ between files: FL2-A is CD4 (a.fcs) or CD8 (b.fcs). ...` when files give a clustered channel different stains (`$PnS`). Channels are matched by `$PnN` and labelled with the first file's stain, so check that the files hold the same panel. The same stain spelled two ways also shows here.
+- `FL4-A takes one value in every clustered cell, ...` for a channel with no spread among the kept cells, such as an empty detector. It adds nothing to the clusters, so leave it out with `--exclude-channels`.
+
+Other warnings the `datanuggets` library raises during a run print the same way.
+
+In the app, the gate form's X and Y channel lists offer every channel of the file. Each starts on the channel chosen when the file has it, or else on the one the rule above takes. The Live cells step offers every channel but Time. The app groups files into datasets by the same default channels ([datasets](app/flow-only-and-datasets.md#2-datasets)).
 
 ### Failure conditions
 
@@ -407,11 +429,12 @@ The checks run in the order of the steps above, so the first condition a run mee
 | `--pops gives 2 choices for 3 files; give one for all of them or one per file, separated by ;` | A `--pops` list of the wrong length |
 | `--groups gives 2 names for 3 files; give one per file, separated by ;` | A `--groups` list of the wrong length |
 | `output path already exists: PATH; choose a new --out folder` | The selected output path already exists |
-| `223.fcs has no channel FOO; its channels: FSC-A, FSC-H, ...` | A file without the `--fsc` or `--ssc` channel |
+| `223.fcs has no channel FOO; its channels: FSC-A, FSC-H, ...; set --fsc to one` | A file without the `--fsc` or `--ssc` channel. The message names the flag |
+| `t.fcs has no channel left to gate on; its channels: Time; set --fsc to one` | A first file with no channel the gate could take for a flag left out |
 | `--exclude-channels names FOO, which 202.fcs doesn't have; its channels: FSC-A, FSC-H, ...` | An `--exclude-channels` name the first file doesn't have |
 | `choose at least two distinct fluorescence channels for clustering and PCA` | Fewer than two default channels left in the first file |
 | `223.fcs has no channel FOO; its channels: FSC-A, FSC-H, ...` | A file without one of the channels to cluster |
-| `--pops: there is no Pop 9; this file has Pop 1 to Pop 7` | A `--pops` entry naming a population the file doesn't have |
+| `--pops: there is no Pop 9; this file has Pop 1 to Pop 7` | A `--pops` entry naming a population the file doesn't have. A file without populations says `this file has no populations; choose none for it` |
 | `--pops: 'x' isn't a population number or a range like 1-3` | A `--pops` entry that doesn't parse |
 | `no terminal to ask in; pass --pops, e.g. --pops "1,2"` | No `--pops`, and standard input isn't a terminal |
 | `cancelled; nothing was clustered` | Ctrl+C or the end of input at the prompt |

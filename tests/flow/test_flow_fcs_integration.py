@@ -41,6 +41,18 @@ def test_read_fcs_preserves_measured_events_and_channel_metadata(recorded_fcs):
     assert pns == labels  # Missing $PnS fields become empty strings for FSC-A and SSC-A.
 
 
+def test_a_channel_without_a_name_is_named_by_its_number(tmp_path):
+    """FCS 2.0 makes $PnN optional, and a FACSCalibur file can leave one out. Both readers name
+    that channel P and its number, as the app's in-tab reader does, and keep the others' order."""
+    path = tmp_path / "unnamed.fcs"
+    with path.open("wb") as handle:
+        flowio.create_fcs(handle, np.arange(30, dtype=float), ["FSC-H", "SSC-H", "FL1-H"])
+    path.write_bytes(path.read_bytes().replace(b"$P2N", b"$X2N"))  # same length, offsets hold
+    events, pnn, _ = pipeline.read_fcs(path)
+    assert pnn == pipeline.read_ranges(path)[0] == ["FSC-H", "P2", "FL1-H"]
+    np.testing.assert_array_equal(events, np.arange(30.0).reshape(10, 3))
+
+
 def _spilled(path, off):
     """A small FCS file whose spillover matrix is the identity plus off from SSC-A into CD3-A."""
     with path.open("wb") as handle:
@@ -173,6 +185,25 @@ def _flow(cwd, *args):
         timeout=180,
     )
     assert run.returncode == 0, run.stdout + run.stderr
+    return run
+
+
+def test_cli_leaves_out_a_few_events_past_a_channels_range(recorded_fcs, tmp_path):
+    """The command reads each file's ranges for the gate's off-scale rule, as the library does.
+    202's scatter scaled under flowio's $PnR of 262144, with 7 copies of its first event set past
+    it, as a CytoFLEX writes a few: the gate's lines name the 7."""
+    _, events, names, labels = recorded_fcs
+    scaled = events.astype(float)
+    scaled[:, :2] *= 200_000 / scaled[:, :2].max()
+    far = np.repeat(scaled[:1], 7, axis=0)
+    far[:, :2] = 10 * 262_144
+    path = tmp_path / "far.fcs"
+    with path.open("wb") as handle:
+        flowio.create_fcs(handle, np.vstack([scaled, far]).ravel(), names, opt_channel_names=labels)
+    run = _flow(tmp_path, path, "--gates-only", "--out", tmp_path / "gates")
+    assert (
+        "7 events past the range of FSC-A or SSC-A are left out of every population" in run.stdout
+    )
 
 
 def test_cli_staged_run_on_a_real_fcs_file_matches_the_one_shot(recorded_fcs, tmp_path):

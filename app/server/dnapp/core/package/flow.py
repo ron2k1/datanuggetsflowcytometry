@@ -39,12 +39,10 @@ def default_channels(pnn: Sequence[str], pns: Sequence[str], name: str) -> list[
 
 def colour_channels(pnn: Sequence[str]) -> list[str]:
     """A file's colour channels, sorted and each once: the $PnN names the package's default rule
-    clusters, those that end in FLOW_CHANNEL_SUFFIX and do not start with one of
-    FLOW_SCATTER_PREFIXES. Files whose lists are equal are one dataset."""
-    from datanuggets_flow._defaults import FLOW_CHANNEL_SUFFIX, FLOW_SCATTER_PREFIXES
+    (pipeline.default_channels) clusters. Files whose lists are equal are one dataset."""
+    from datanuggets_flow.pipeline import default_channels
 
-    suffix, scatter = FLOW_CHANNEL_SUFFIX, FLOW_SCATTER_PREFIXES
-    return sorted({c for c in pnn if c.endswith(suffix) and not c.startswith(scatter)})
+    return sorted(set(default_channels(pnn)))
 
 
 # ---- settings -----------------------------------------------------------------------------
@@ -56,11 +54,15 @@ def gate_defaults() -> dict:
     return GateSettings().to_dict()
 
 
-def gate_settings(data: Mapping, n_files: int):
-    """GateSettings.from_dict(data).check(n_files)."""
+def gate_settings(data: Mapping, n_files: int, pnn: Sequence[str] = ()):
+    """GateSettings.from_dict(data).check(n_files), with fsc and ssc that aren't set taken from
+    the first file's channels pnn by the package's rule (on_channels), so the record names the
+    channels the gate takes."""
+    from datanuggets_flow.pipeline import on_channels
     from datanuggets_flow.settings import GateSettings
 
-    return GateSettings.from_dict(dict(data)).check(n_files)
+    settings = GateSettings.from_dict(dict(data)).check(n_files)
+    return on_channels(settings, pnn) if pnn else settings
 
 
 def cluster_defaults() -> dict:

@@ -165,9 +165,9 @@ def kept_values(
         n = np.shape(s["masks"])[1]
         bad = [p for p in pops if not (_whole(p, 1) and p <= n)]
         if bad:
+            has = f"Pop 1 to Pop {n}" if n else "no populations"
             raise FlowError(
-                f"{{param}}: {s['path'].name} has Pop 1 to Pop {n}; there is no Pop {bad[0]}",
-                "pops",
+                f"{{param}}: {s['path'].name} has {has}; there is no Pop {bad[0]}", "pops"
             )
         pops_of.append(tuple(sorted({int(p) for p in pops})))
     keeps = [pick_events(s["masks"], pops) for s, pops in zip(samples, pops_of)]

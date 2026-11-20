@@ -1,5 +1,24 @@
 # Release notes
 
+## 0.1.0a4
+
+This release runs FCS files from instruments other than the PBMC demo's. It's on PyPI as `datanuggets-flow==0.1.0a4` and is the app image `ghcr.io/ron2k1/datanuggets-flow:0.1.0a4`. The `datanuggets` library and the dependencies are those of 0.1.0a3.
+
+### Changed
+
+- Scatter is known by name, as a channel starting with `FS` or `SS`, such as `FSC-A` or a Navios's `FS INT`. The gate uses the first file's forward and side scatter unless `--fsc` and `--ssc` name others. A file with no scatter is gated on its first two default channels ([Files from other instruments](cli.md#files-from-other-instruments)).
+- When a file has fewer than two distinct `-A` channels, as with a FACSCalibur's heights or a mass cytometer's isotopes, the default channels are every channel but scatter and Time.
+- Events past a gate channel's range (`$PnR`) are left out of every population when they're at most 1% of the file's events. The gate's log counts them, and `gates.png` keeps its axes on the rest. When more are past range, none are left out.
+- A run warns when a clustered channel takes one value in every kept cell, and when files give one detector different stains (`$PnS`). The CLI prints each warning once as a `warning:` line.
+- Clustering refuses a channel that holds NaN or an infinite value among the kept cells, and names it.
+- The message for a file without the scatter channel names the flag to set.
+
+### App
+
+- An upload is taken as an FCS file by its header (FCS 2.0, 3.0 or 3.1) whatever its name, so a FACSCalibur's `.B08` or an `.LMD` file loads.
+- The gate form's X and Y channel lists start on the scatter the file has, else on two different channels it offers. The form refuses one channel for both.
+- Datasets group uploads by the package's default channels, so two mass cytometry panels no longer share a dataset.
+
 ## 0.1.0a3, first alpha
 
 The first release of `datanuggets-flow`, on PyPI as `datanuggets-flow==0.1.0a3` and as the app image `ghcr.io/ron2k1/datanuggets-flow:0.1.0a3`. It needs Python 3.12 or newer and depends on `datanuggets>=0.1.0a3,<0.2`, numpy, scipy, flowio, matplotlib, pandas and scikit-learn. The code is GPL-2.0-only.

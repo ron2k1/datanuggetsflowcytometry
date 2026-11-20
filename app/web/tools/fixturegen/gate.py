@@ -5,8 +5,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from datanuggets_flow._defaults import FLOW_CHANNEL_SUFFIX, FLOW_SCATTER_PREFIXES
 from datanuggets_flow.colors import population_colors
+from datanuggets_flow.pipeline import default_channels
 
 from .common import sig, write_json
 
@@ -27,11 +27,7 @@ def write_gate(
                 "name": g["name"],
                 "n_events": g["n_events"],
                 "channels": [{"pnn": n, "pns": s or ""} for n, s in zip(pnn, pns)],
-                "default_channels": [
-                    c
-                    for c in pnn
-                    if c.endswith(FLOW_CHANNEL_SUFFIX) and not c.startswith(FLOW_SCATTER_PREFIXES)
-                ],
+                "default_channels": default_channels(pnn),
                 "local_maxima": g["local_maxima"],
                 "populations": [
                     {

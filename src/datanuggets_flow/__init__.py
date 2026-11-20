@@ -1,5 +1,6 @@
-"""Cabrera's gate finder for the lymphocyte and macrophage populations on FSC-A against SSC-A,
-from Prof. Cabrera's Python port of the original R code, checked piece by piece against it."""
+"""Cabrera's gate finder for the lymphocyte and macrophage populations on two channels (FSC-A
+against SSC-A in his files, any two in yours), from Prof. Cabrera's Python port of the original R
+code, checked piece by piece against it."""
 
 from importlib.metadata import version as _version
 

@@ -7,10 +7,10 @@
 Use Python 3.12 or newer. The package installs where `datanuggets` does: Windows x64, Apple silicon Macs running macOS 12 or newer, and Linux x86-64 or ARM64 with glibc 2.27 or newer.
 
 ```sh
-python -m pip install "datanuggets-flow==0.1.0a3"
+python -m pip install "datanuggets-flow==0.1.0a4"
 ```
 
-This also installs `datanuggets`, flowio, pandas, matplotlib and scikit-learn. `0.1.0a3` is a pre-release, and naming the version tells pip to install it.
+This also installs `datanuggets`, flowio, pandas, matplotlib and scikit-learn. `0.1.0a4` is a pre-release, and naming the version tells pip to install it.
 
 ## A first datanuggets-flow run
 
@@ -24,7 +24,7 @@ datanuggets-flow path/to/fcs_folder
 
 Choose at least two distinct fluorescence channels. The command checks this before asking for populations. Clustering also needs at least three occupied nuggets across the kept files. Channel flags use the FCS `$PnN` names, not display marker names.
 
-By default the command clusters the channels whose names end in `-A` and don't start with FSC or SSC. It applies `arcsinh(x / c)`, with a cofactor `c` picked per channel from the cells being clustered. That's 150, or the spread of the channel's cells below 0 when that's wider and at least 1% of its cells are below 0. `--cofactor N` sets one for every channel ([Transform and Scale](cli.md#transform-and-scale)). Check both choices for your panel. The command doesn't compensate.
+By default the command clusters the channels whose names end in `-A` and don't start with FS or SS, the scatter prefixes. Files with fewer than two such channels, or with no FSC-A and SSC-A, are covered in [Files from other instruments](cli.md#files-from-other-instruments). It applies `arcsinh(x / c)`, with a cofactor `c` picked per channel from the cells being clustered. That's 150, or the spread of the channel's cells below 0 when that's wider and at least 1% of its cells are below 0. `--cofactor N` sets one for every channel ([Transform and Scale](cli.md#transform-and-scale)). Check both choices for your panel. The command doesn't compensate.
 
 The command's default `--disc reference` and the array finder's default area rule differ, and they can change which events a population holds. Gates can overlap. Selecting several keeps their union, with each event counted once.
 

@@ -8,7 +8,7 @@ Usage is elsewhere. [quickstart.md](quickstart.md) has a first run, and [cli.md]
 
 ### The gate finder
 
-`datanuggets_flow.lymphmacro_finder` is Prof. Cabrera's gate finder for the lymphocyte and macrophage populations, ported from its Python version, which is Cabrera's own port of the original R code. It works on two channels, FSC-A and SSC-A:
+`datanuggets_flow.lymphmacro_finder` is Prof. Cabrera's gate finder for the lymphocyte and macrophage populations, ported from its Python version, which is Cabrera's own port of the original R code. It works on two channels, FSC-A and SSC-A in his files, or any two it is given:
 
 1. Both channels are shifted by the smaller of their two minimums, plus 3, and square rooted.
 2. `f_plot` bins them into a 100 by 100 grid, each bin `floor(100 * (v - min) / (max - min)) + 1` clipped to 1 to 100, counts the events per cell, takes `log(1 + count)`, and sets cells below 0.1 times the largest to 0. Grid rows are SSC-A bins and columns are FSC-A bins.
@@ -61,11 +61,11 @@ The finder's tunable values are in `datanuggets_flow._defaults`, and each has a 
 | `MIN_POINTS` | `gate` | 3 | An area needs more than 3 cells, and its gate more than 3 events | :208 |
 | The first-peak rule | `gate`, `peaks` | | The first peak by SSC row takes `t11` and `t21`, the others `t12` and `t22` | :186-187 |
 
-`find_area` and `mirrored_area` default to `t1=35` and `t2=0.85`, `AREA_T1` and `AREA_T2` in `peaks`, from :102. The finder always passes its own thresholds, so those defaults are never reached and `gates.json` doesn't record them. The other `datanuggets-flow` defaults, from the scatter channels to the t-SNE's seed, are in `_defaults` too, and [cli.md](cli.md#options) lists them with their flags.
+`find_area` and `mirrored_area` default to `t1=35` and `t2=0.85`, `AREA_T1` and `AREA_T2` in `peaks`, from :102. The finder always passes its own thresholds, so those defaults are never reached and `gates.json` doesn't record them. The other `datanuggets-flow` defaults, from the scatter prefixes and the off-scale share to the t-SNE's seed, are in `_defaults` too, and [cli.md](cli.md#options) lists them with their flags.
 
 ### The `datanuggets-flow` pipeline
 
-`datanuggets-flow` (`src/datanuggets_flow/pick.py`) reads each FCS file with flowio, as stored and uncompensated, gates it with the finder above, and asks which populations to keep, file by file. It makes nuggets of each file's kept events, transformed as `arcsinh(x / c)` with each channel's cofactor `c` and scaled to standard deviation 1 over all the files ([Transform and Scale](#transform-and-scale)), with `create_dn`, pools them, and clusters the pooled nuggets once into `--k` clusters, with `WCluster`'s weighted k-means by default or the hierarchical tree with `--method tree`. The command does the printing and asking, around `gate_stage` and `cluster_stage` in `datanuggets_flow.pipeline`, and [cli.md](cli.md#what-a-run-does) lists the steps in order, with every flag, the prompt's grammar, the output files and the conditions on which the command stops.
+`datanuggets-flow` (`src/datanuggets_flow/pick.py`) reads each FCS file with flowio, as stored and uncompensated, gates it with the finder above, leaving out the few events past a gate channel's range ([cli.md](cli.md#files-from-other-instruments)), and asks which populations to keep, file by file. It makes nuggets of each file's kept events, transformed as `arcsinh(x / c)` with each channel's cofactor `c` and scaled to standard deviation 1 over all the files ([Transform and Scale](#transform-and-scale)), with `create_dn`, pools them, and clusters the pooled nuggets once into `--k` clusters, with `WCluster`'s weighted k-means by default or the hierarchical tree with `--method tree`. The command does the printing and asking, around `gate_stage` and `cluster_stage` in `datanuggets_flow.pipeline`, and [cli.md](cli.md#what-a-run-does) lists the steps in order, with every flag, the prompt's grammar, the output files and the conditions on which the command stops.
 
 ### Design choices in the pipeline
 
@@ -187,7 +187,7 @@ Beavers et al. (2025) define data nuggets (Algorithms 1 and 2, Section 3) and we
 
 | | Paper, Section 4 | `datanuggets-flow` |
 | --- | --- | --- |
-| Input | one dataset | one or more FCS files, gated on FSC-A and SSC-A first, with populations picked per file |
+| Input | one dataset | one or more FCS files, gated on forward and side scatter first (FSC-A and SSC-A on the demo files), with populations picked per file |
 | Transform | none stated | `arcsinh(x / c)` by default, `c` per channel: 150, or the spread of the channel's cells below 0 where that's wider and at least 1% of the cells are below 0 |
 | Scaling | none stated | every channel to mean 0 and SD 1 over all the clustered files' kept events, by default |
 | Nuggets | one set for the whole dataset, then refined | one set per file, not refined |

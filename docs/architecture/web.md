@@ -54,7 +54,7 @@ app/web/
 | `terminal` | the bottom panel: the open tab's Output and the session's Activity log |
 | `start` | the Start tab: steps (Live cells is named only while a part is in slot `gate.livecells`, as the picker does), drop zone, demo data |
 | `run-locally` | the "Run it locally" tab |
-| `upload` | the uploader (chooser, drops, progress; .fcs files only; a toast for each dataset a batch makes while another is there) and the upload tab with its dataset and channels; owns slot `upload.fcs` |
+| `upload` | the uploader (chooser, drops, progress; FCS files only, known by their header whatever their name; a toast for each dataset a batch makes while another is there) and the upload tab with its dataset and channels; owns slot `upload.fcs` |
 | `gate` | the "Find populations" form in slot `upload.fcs`, which offers only the opened file's dataset, and the gate's full figure tab |
 | `population-picker` | a finished gate's steps: populations and groups, then whatever part is in slot `gate.livecells`, then the Transform and Scale stages (the cofactor on Auto by default, which picks one per channel from the run's cells when it starts, so the form shows the rule rather than a number; a typed number applies to every channel, and "Use auto" goes back), the cluster settings and Cluster; owns slot `gate.livecells` |
 | `live-cells` | the Live cells step, as the part in slot `gate.livecells`: a marker-channel dropdown per row (viability dye, CD45, and any added with "Add a channel"), a histogram per row with a line to click, drag or type, the counts that pass, and the row filters it hands the cluster settings. Without it the picker goes from populations straight to Cluster |

@@ -10,7 +10,7 @@ const FIGURES = { local_maxima: 'Local maxima', gates: 'Populations' };
 // One file of a gate: its name and events, the peak count, and a row per population with the
 // population's colour on its dot and on its share bar.
 function fileCard(f, settings) {
-  const fsc = settings.fsc || 'FSC', ssc = settings.ssc || 'SSC';
+  const fsc = settings.fsc || 'x', ssc = settings.ssc || 'y';
   const rows = f.populations.map(p => el('tr', {},
     el('td', {}, el('span', { class: 'sw', style: `background:${p.color}` }), `Pop ${p.pop}`),
     el('td', { class: 'num strong', text: fmtInt(p.events) }),

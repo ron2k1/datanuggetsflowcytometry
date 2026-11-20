@@ -1,5 +1,6 @@
-"""gates: Cabrera's figure of the gate finder's populations on FSC-A against SSC-A, and peaks:
-the density grid they are found on, with its local maxima and the peaks that seed them."""
+"""gates: Cabrera's figure of the gate finder's populations on the two channels gated on (forward
+against side scatter in his files), and peaks: the density grid they are found on, with its local
+maxima and the peaks that seed them."""
 
 from __future__ import annotations
 
@@ -16,10 +17,11 @@ EVENT_ALPHA = 0.3
 POP_ALPHA = 0.8
 
 
-def gates(fsc_a, ssc_a, masks, *, title=None, ax=None):
+def gates(fsc_a, ssc_a, masks, *, title=None, ax=None, channels=None):
     """cfc.py's figure: every event in gray, then each population that has an event in the next
     color of the axes' cycle, so an empty population takes no color, as cfc.py's scatter calls do.
-    masks is the finder's output, one bool column per population. Returns the axes."""
+    fsc_a is the channel across, ssc_a the one up; masks is the finder's output, one bool column
+    per population; channels, when given, names the two on the axes. Returns the axes."""
     fsc = np.asarray(fsc_a, dtype=float)
     ssc = np.asarray(ssc_a, dtype=float)
     if fsc.ndim != 1 or fsc.shape != ssc.shape:
@@ -56,16 +58,18 @@ def gates(fsc_a, ssc_a, masks, *, title=None, ax=None):
             )
     if title is not None:
         ax.set_title(title)
-    ax.set_xlabel("FSC-A")
-    ax.set_ylabel("SSC-A")
+    if channels is not None:
+        ax.set_xlabel(channels[0])
+        ax.set_ylabel(channels[1])
     ax.legend(markerscale=4)
     return ax
 
 
-def peaks(fp, *, title=None, ax=None):
-    """The finder's density grid, FSC-A across and SSC-A up as in gates, every local maximum as
-    an open circle and each kept peak as a cross labelled with the Pop number it seeds in gates.
-    fp is flow.finder_peaks' result; ticks are in the channels' raw units. Returns the axes."""
+def peaks(fp, *, title=None, ax=None, channels=None):
+    """The finder's density grid, the gate's channels across and up as in gates (channels, when
+    given, names them), every local maximum as an open circle and each kept peak as a cross
+    labelled with the Pop number it seeds in gates. fp is flow.finder_peaks' result; ticks are in
+    the channels' raw units. Returns the axes."""
     density = np.asarray(fp.density, dtype=float)
     if density.ndim != 2:
         raise ValueError("density must be a two-dimensional grid")
@@ -123,8 +127,9 @@ def peaks(fp, *, title=None, ax=None):
         axis.set_major_formatter(FixedFormatter([_short(t) for t in ticks]))
     if title is not None:
         ax.set_title(title)
-    ax.set_xlabel("FSC-A (sqrt-scaled grid)")
-    ax.set_ylabel("SSC-A (sqrt-scaled grid)")
+    across, up = channels or ("", "")
+    ax.set_xlabel(f"{across} (sqrt-scaled grid)".lstrip())
+    ax.set_ylabel(f"{up} (sqrt-scaled grid)".lstrip())
     ax.legend(loc="upper left", facecolor="0.75")  # gray, so the white circle shows
     return ax
 

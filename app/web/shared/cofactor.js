@@ -4,11 +4,6 @@
 // resolve_cofactor), so the page can't preview it; a number applies to every channel. Older runs
 // recorded one number for every channel, auto from the files' headers or set.
 import { fmtNum, fmtPct } from './format.js';
-import { LIVECELLS_SCATTER_PREFIXES, LIVECELLS_TIME_RE } from './config.js';
-
-// A marker channel: every channel but forward and side scatter and Time. The upload view shows a
-// header range for these only.
-export const isMarkerChannel = name => !LIVECELLS_SCATTER_PREFIXES.some(p => name.startsWith(p)) && !LIVECELLS_TIME_RE.test(name);
 
 // The cluster form's line while the cofactor is on auto, with the floor when /config gives the
 // rule (defaults.cofactor_auto): there is no number to show before the run.

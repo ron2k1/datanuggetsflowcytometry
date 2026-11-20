@@ -125,11 +125,10 @@ def pbmc():
 
 
 def colour(u: dict) -> list[str]:
-    """u's colour channels by the package's own constants, sorted."""
-    from datanuggets_flow._defaults import FLOW_CHANNEL_SUFFIX, FLOW_SCATTER_PREFIXES
+    """u's colour channels by the package's own rule, sorted."""
+    from datanuggets_flow.pipeline import default_channels
 
-    names = (c["name"] for c in u["columns"] if c["name"].endswith(FLOW_CHANNEL_SUFFIX))
-    return sorted({n for n in names if not n.startswith(FLOW_SCATTER_PREFIXES)})
+    return sorted(set(default_channels([c["name"] for c in u["columns"]])))
 
 
 def variant(u: dict, uid: str, drop=(), labels=None) -> dict:
@@ -140,16 +139,9 @@ def variant(u: dict, uid: str, drop=(), labels=None) -> dict:
     return {**u, "id": uid, "name": f"{uid}.fcs", "columns": cols}
 
 
-def test_the_colour_channel_rule_is_the_packages(js):
-    from datanuggets_flow._defaults import FLOW_CHANNEL_SUFFIX, FLOW_SCATTER_PREFIXES
-
-    got = js("return [config.FLOW_CHANNEL_SUFFIX, config.LIVECELLS_SCATTER_PREFIXES];")
-    assert got == [FLOW_CHANNEL_SUFFIX, list(FLOW_SCATTER_PREFIXES)]
-
-
 def test_a_file_read_in_the_tab_has_the_servers_names_and_stains(js, make_client, tmp_path):
     """The server keeps each $PnN as stored, padding and all, as the package reads it (so a
-    padded "-A " name is no colour channel to either), and trims each $PnS with Python's
+    padded "-A " name doesn't end in -A to either), and trims each $PnS with Python's
     str.strip(), which trims \\x1c to \\x1f too. A file read in the tab gets the same names and
     stains, so the two group it alike."""
     path = fcs_202(
@@ -166,28 +158,33 @@ def test_a_file_read_in_the_tab_has_the_servers_names_and_stains(js, make_client
     )
     assert got[0] == server
     assert server[2:4] == [[" FJComp-Alexa Fluor 700-A ", "CD8"], ["FJComp-BV510-A ", "CD3"]]
-    assert got[1] == ["FJComp-Spark Blue-A"]
+    from dnapp.core.package.flow import colour_channels
+
+    # one name ends in -A as stored, too few, so both take every channel but scatter
+    assert got[1] == colour_channels([n for n, _ in server]) == sorted(n for n, _ in server[2:])
 
 
 def test_a_file_read_in_the_tab_reads_its_text_as_flowio_does(js, make_client, tmp_path):
     """flowio decodes the TEXT segment as UTF-8, or as ISO-8859-1 when it is not UTF-8, drops
     every $, and splits it at each delimiter that is not doubled, then halves the doubled ones,
     which is how a value holds one. The tab reads a file so too: a / in a $PnN or a $PnS (which
-    flowio writes doubled), a $ in a stain, a stain in UTF-8, and a $PnN in Windows-1252 with an
-    en dash (0x96), which reads as U+0096."""
+    flowio writes doubled), a $ in a stain, a stain in UTF-8, a $PnN in Windows-1252 with an en
+    dash (0x96), which reads as U+0096, and a channel with no $PnN, as FCS 2.0 allows, which both
+    name P and its number."""
     pnn = ["FSC-A", "SSC-A", "FJComp-Alexa Fluor 700-A", "FJComp-BV510/x-A", "FJComp-Spark Blue-A"]
     slashed = fcs_202(tmp_path / "slashed.fcs", pnn, ["", "", "CD8/a", "CD3 $1", "CD4 \u00b5"])
     raw = fcs_202(tmp_path / "dash.fcs").read_bytes()
     assert raw.count(b"FJComp-BV510-A") == 1
-    dash = tmp_path / "dash.fcs"
+    dash, unnamed = tmp_path / "dash.fcs", tmp_path / "unnamed.fcs"
     dash.write_bytes(raw.replace(b"FJComp-BV510-A", b"FJComp\x96BV510-A"))
+    unnamed.write_bytes(raw.replace(b"$P3N", b"$X3N"))  # same length, so the offsets hold
     c, server = make_client(), []
-    for path in (slashed, dash):
+    for path in (slashed, dash, unnamed):
         r = upload(c, path)
         assert r.status_code == 201, r.text
         server.append([[col["name"], col["label"]] for col in r.json()["columns"]])
     got = js(
-        READ + f"const paths = {json.dumps([str(slashed), str(dash)])}, out = [];"
+        READ + f"const paths = {json.dumps([str(slashed), str(dash), str(unnamed)])}, out = [];"
         " for (const p of paths) out.push((await readFcs(p, 'x.fcs')).columns.map(c => [c.name, c.label]));"
         " return out;"
     )
@@ -198,6 +195,7 @@ def test_a_file_read_in_the_tab_reads_its_text_as_flowio_does(js, make_client, t
         ["FJComp-Spark Blue-A", "CD4 \u00b5"],
     ]
     assert server[1][3][0] == "FJComp\x96BV510-A"
+    assert server[2][2][0] == "P3"
 
 
 def test_a_file_read_in_the_tab_halves_a_doubled_delimiter_as_flowio_does(
@@ -235,7 +233,8 @@ def test_a_file_the_tab_cannot_read_gets_the_servers_words(js, make_client, tmp_
     """A file with no FCS 2.0, 3.0 or 3.1 header, and one the reader cannot follow (202.fcs cut
     to its first 64 bytes), are refused in the tab with the server's code and words; the error
     the second names is JavaScript's, where the server names Python's."""
-    raw = fcs_202(tmp_path / "202.fcs").read_bytes()
+    raw_path = fcs_202(tmp_path / "202.fcs")
+    raw = raw_path.read_bytes()
     fake, cut = tmp_path / "fake.fcs", tmp_path / "cut.fcs"
     fake.write_bytes(b"NOTFCS" + b"\0" * 100)
     cut.write_bytes(raw[:64])
@@ -253,6 +252,9 @@ def test_a_file_the_tab_cannot_read_gets_the_servers_words(js, make_client, tmp_
     read = "The FCS file could not be read: "
     assert got[1][0] == server[1]["code"] == "unreadable_file"
     assert server[1]["message"].startswith(read) and got[1][1] == f"{read}RangeError."
+    # the header says what a file is, as on the server, so 202.fcs's bytes as .B08 are read
+    rows = js(READ + f"return (await readFcs({json.dumps(str(raw_path))}, '202.B08')).rows;")
+    assert rows == 50_000
 
 
 def test_colour_channels_follow_the_packages_rule(js, pbmc):
@@ -369,6 +371,28 @@ def test_a_file_with_under_two_colour_channels_groups_by_its_set(js, pbmc):
         [["x1"], [p[0]], f"lacks {p[1]}, {p[2]}, {p[3]} and 28 more"],
         [["x2", "x3"], [], f"lacks {p[0]}, {p[1]}, {p[2]} and 29 more"],
     ]
+
+
+def test_without_two_area_channels_every_marker_channel_counts(js):
+    """As the package's default_channels: files that record fewer than two -A channels, as a mass
+    cytometer's do, key their datasets on every channel but scatter and Time. Two panels are two
+    datasets, and a channel's stains are compared within one."""
+
+    def up(uid, names, labels):
+        cols = [{"name": n, "label": s} for n, s in zip(names, labels)]
+        return {"id": uid, "name": f"{uid}.fcs", "kind": "fcs", "rows": 10, "columns": cols}
+
+    names = ["Time", "Event_length", "Ce140Di", "Ir191Di"]
+    a = up("a", names, ["", "", "CD45", "DNA1"])
+    b = up("b", names, ["", "", "CD3", "DNA1"])
+    c = up("c", ["Time", "Event_length", "Nd142Di", "Ir191Di"], ["", "", "CD19", "DNA1"])
+    got = js(
+        f"const fs = {json.dumps([a, b, c])};"
+        " return [fs.map(ds.colourChannels), ds.groupDatasets(fs).map(d => ids(d.files)),"
+        " ds.stainDiffs(fs.slice(0, 2)).map(s => s.channel)];"
+    )
+    assert got == [[colour(u) for u in (a, b, c)], [["a", "b"], ["c"]], ["Ce140Di"]]
+    assert got[0][0] == ["Ce140Di", "Event_length", "Ir191Di"]
 
 
 def test_stains_differ_by_trimmed_labels_and_never_by_an_empty_one(js, pbmc):
