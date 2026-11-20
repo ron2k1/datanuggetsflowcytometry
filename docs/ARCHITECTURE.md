@@ -19,7 +19,8 @@ The rest of the repository serves the package:
 | `tests/` | the package's pytest suite, its recorded fixtures, and the package's two boundary tests |
 | `scripts/` | `check_dist.py`, the check of a built sdist and wheel |
 | `benchmarks/flow/` | the reference code the flow port is held to, and the comparisons and timings run against it |
-| `.github/workflows/` | `tests.yml`, `matrix.yml`, `package.yml` and `release.yml` for the package, and `app.yml` and `image.yml` for the app and its image. [development.md](development.md#what-ci-runs) describes them |
+| `site/` | the project page. `pages.yml` deploys it to GitHub Pages with the screenshots from `docs/images/`. It isn't in the sdist, the wheel or the image |
+| `.github/workflows/` | `tests.yml`, `matrix.yml`, `package.yml` and `release.yml` for the package, `app.yml` and `image.yml` for the app and its image, and `pages.yml` for the project page. [development.md](development.md#what-ci-runs) describes them |
 
 The wheel holds the package alone. The sdist adds the package's tests and the user guides that `pyproject.toml` lists. The Docker image holds the installed package, `app/server/` without its tests, the page in `app/web/` without its fixtures and tools, and the demo data. The `Dockerfile` picks those files itself, since a build from a git URL gets no `.dockerignore`. `.dockerignore` keeps the rest, such as the tests, the benchmarks and the docs, out of a local build's context.
 

@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>datanuggets-flow</title>
+    <meta
+      name="description"
+      content="Explore flow cytometry populations across multiple FCS files with data nuggets. A local web app in Docker, a command-line tool and a Python package."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="datanuggets-flow" />
+    <meta
+      property="og:description"
+      content="Explore flow cytometry populations across multiple FCS files with data nuggets."
+    />
+    <meta property="og:url" content="https://ron2k1.github.io/datanuggetsflowcytometry/" />
+    <meta
+      property="og:image"
+      content="https://ron2k1.github.io/datanuggetsflowcytometry/images/app-tsne.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='11' cy='12' r='7' fill='%232563eb'/%3E%3Ccircle cx='22' cy='20' r='5' fill='%23d97706'/%3E%3Ccircle cx='9' cy='25' r='3' fill='%2316a34a'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="top">
+      <div class="wrap top-row">
+        <a class="brand" href="#top">datanuggets-flow</a>
+        <nav aria-label="Sections">
+          <ul>
+            <li><a href="#app">Get the app</a></li>
+            <li><a href="#python">Python</a></li>
+            <li><a href="#docs">Docs</a></li>
+            <li><a href="https://github.com/ron2k1/datanuggetsflowcytometry">GitHub</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="wrap hero" id="top">
+        <h1>datanuggets-flow</h1>
+        <p class="lede">
+          Explore flow cytometry populations across multiple FCS files with data nuggets.
+        </p>
+        <ul class="actions">
+          <li><a class="button primary" href="#app">Get the app</a></li>
+          <li><a class="button" href="#python">Install from PyPI</a></li>
+        </ul>
+        <figure>
+          <a href="images/app-tsne.png">
+            <img
+              src="images/app-tsne.png"
+              width="1440"
+              height="900"
+              alt="The plot view of the datanuggets-flow app, with a t-SNE of data nuggets colored by cluster"
+            />
+          </a>
+          <figcaption>
+            The app's plot view shows a t-SNE of the data nuggets from four public PBMC
+            demonstration files. Each point is sized by its nugget weight and colored by its
+            cluster.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="wrap" id="about">
+        <h2>What it does</h2>
+        <p>
+          A flow cytometry experiment can produce millions of events across dozens of samples.
+          Analyzing each file separately makes it hard to compare clusters across samples.
+          Analyzing everything together can become expensive, especially when a method needs
+          pairwise distances.
+        </p>
+        <p>
+          <code>datanuggets-flow</code> takes a middle route. It helps you select candidate
+          populations in each file using forward and side scatter, reduces the selected events to
+          weighted data nuggets and clusters the pooled nuggets in one analysis. The cluster
+          labels are shared across the files in a run, so you can examine how their relative
+          abundance and marker profiles differ between samples.
+        </p>
+        <p>
+          The package builds on
+          <a href="https://pypi.org/project/datanuggets/"><code>datanuggets</code></a
+          >, a Python port of the R packages <code>datanugget</code> and <code>WCluster</code>.
+          It offers a local web app, a command-line interface and a Python API.
+        </p>
+        <p class="note">
+          <strong>Research alpha (<code>0.1.0a3</code>).</strong> This is an exploratory analysis
+          tool. It isn't an automated cell-type identification system or a validated clinical
+          analysis system. Its clusters are mathematical groupings, and they aren't confirmed
+          biological populations. The API and analysis defaults may change.
+        </p>
+      </section>
+
+      <section class="wrap" id="app">
+        <h2>Get the app</h2>
+        <p>
+          The app runs on your own computer in Docker. The image is published for linux/amd64 and
+          linux/arm64.
+        </p>
+        <ol class="steps">
+          <li>
+            <p>
+              Install <a href="https://docs.docker.com/get-docker/">Docker</a> and
+              start it. That's Docker Desktop on Windows and macOS.
+            </p>
+          </li>
+          <li>
+            <p>Run this in a terminal:</p>
+            <div class="code">
+              <pre><code id="cmd-app">docker run --rm -p 127.0.0.1:8000:8000 -v datanuggets-data:/data ghcr.io/ron2k1/datanuggets-flow:0.1.0a3</code></pre>
+              <button type="button" data-copy="cmd-app" hidden>Copy</button>
+            </div>
+          </li>
+          <li>
+            <p>
+              Open <a href="http://127.0.0.1:8000">http://127.0.0.1:8000</a> in your browser.
+            </p>
+          </li>
+        </ol>
+        <p>
+          The app lets you inspect candidate gates, choose which populations to include, run the
+          clustering and explore the results with interactive plots. <kbd>Ctrl+C</kbd> stops it,
+          and the next <code>docker run</code> with the same
+          <code>-v datanuggets-data:/data</code> finds your uploads and runs where you left them.
+        </p>
+        <p>
+          The address is bound to your own computer rather than your local network. The named
+          Docker volume keeps uploads and completed runs between containers. The analysis runs on
+          your computer. Downloading the container image itself requires a network connection.
+          Check your environment's network and data-handling requirements before you use
+          sensitive files.
+        </p>
+        <p>
+          The image includes a small public PBMC demonstration dataset of four FCS files, so you
+          can explore the workflow before adding your own. The
+          <a
+            href="https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/app/running-locally.md"
+            >app guide</a
+          >
+          covers the app's settings and building the image from source.
+        </p>
+      </section>
+
+      <section class="wrap" id="tour">
+        <h2>What the app shows</h2>
+        <div class="shots">
+          <figure>
+            <a href="images/app-populations.png">
+              <img
+                src="images/app-populations.png"
+                width="1440"
+                height="900"
+                loading="lazy"
+                alt="The population step of the app, with each file's scatter density and tick boxes for its candidate populations"
+              />
+            </a>
+            <figcaption>
+              The population step shows each file's FSC-A and SSC-A density with the peaks the
+              gate finder kept. You tick the populations to carry into the clustering.
+            </figcaption>
+          </figure>
+          <figure>
+            <a href="images/app-cluster-settings.png">
+              <img
+                src="images/app-cluster-settings.png"
+                width="1440"
+                height="1060"
+                loading="lazy"
+                alt="The cluster step of the app, with the cluster count, the nuggets per file and a tick box for every channel"
+              />
+            </a>
+            <figcaption>
+              The cluster step is where you set the number of clusters and how many nuggets each
+              file keeps. You can also change the transform and the clustering method, and tick
+              the marker channels to cluster on.
+            </figcaption>
+          </figure>
+          <figure>
+            <a href="images/app-3d-tsne-dark.png">
+              <img
+                src="images/app-3d-tsne-dark.png"
+                width="1440"
+                height="900"
+                loading="lazy"
+                alt="A 3D t-SNE of the nuggets in the app's dark theme, colored by cluster"
+              />
+            </a>
+            <figcaption>
+              This is the demonstration run as a 3D t-SNE, shown in the app's dark theme. You can
+              rotate and pan the plot.
+            </figcaption>
+          </figure>
+          <figure>
+            <a href="images/app-3d-markers.png">
+              <img
+                src="images/app-3d-markers.png"
+                width="1440"
+                height="900"
+                loading="lazy"
+                alt="A 3D scatter plot of the nuggets on CD3, CD19 and CD14 axes, colored by cluster"
+              />
+            </a>
+            <figcaption>
+              Marker axes put measured channels on the plot. This view has CD3, CD19 and CD14,
+              and each axis has a menu for choosing another channel.
+            </figcaption>
+          </figure>
+          <figure>
+            <a href="images/app-box-plots.png">
+              <img
+                src="images/app-box-plots.png"
+                width="1440"
+                height="900"
+                loading="lazy"
+                alt="The box plot view, with one cluster's marker levels beside the rest of the run and its cell counts per file"
+              />
+            </a>
+            <figcaption>
+              The box plot view compares a cluster's marker levels with the rest of the run. It
+              also shows how many of the cluster's cells come from each file.
+            </figcaption>
+          </figure>
+          <figure>
+            <a href="images/app-compare-samples.png">
+              <img
+                src="images/app-compare-samples.png"
+                width="1440"
+                height="900"
+                loading="lazy"
+                alt="The compare view, with each cluster's share of every sample as a heatmap, a stacked bar chart and a table"
+              />
+            </a>
+            <figcaption>
+              The compare view shows each cluster's share of every sample as a heatmap, a stacked
+              bar chart and a table. Each share is a percentage of the events retained in that
+              file.
+            </figcaption>
+          </figure>
+        </div>
+        <p>The app gives you several ways to inspect a finished run:</p>
+        <ul>
+          <li>
+            2D and 3D scatter plots of nuggets or sampled cells, colored by the common cluster
+            labels
+          </li>
+          <li>
+            Marker and PCA axes to examine where clusters sit in measured or derived feature
+            space
+          </li>
+          <li>
+            t-SNE views for exploring local groupings, with separate two- and three-dimensional
+            fits
+          </li>
+          <li>Parallel-coordinate plots for checking marker patterns across clusters</li>
+          <li>
+            Per-cluster box plots and per-file comparison tables for reviewing marker levels and
+            cluster frequencies
+          </li>
+        </ul>
+        <p>
+          Pooled clustering gives every file the same labels. It doesn't prove that a label
+          denotes the same cell type in every file. The README lists the
+          <a
+            href="https://github.com/ron2k1/datanuggetsflowcytometry#before-interpreting-a-cluster"
+            >checks to make before interpreting a cluster</a
+          >.
+        </p>
+      </section>
+
+      <section class="wrap" id="python">
+        <h2>Use it from Python</h2>
+        <p>
+          The package requires Python 3.12 or newer and a platform that the underlying
+          <code>datanuggets</code> package supports. Those are Windows x64, Apple silicon Macs
+          running macOS 12 or newer, and Linux x86-64 or ARM64 with glibc 2.27 or newer. Install
+          the pinned alpha:
+        </p>
+        <div class="code">
+          <pre><code id="cmd-pip">python -m pip install "datanuggets-flow==0.1.0a3"</code></pre>
+          <button type="button" data-copy="cmd-pip" hidden>Copy</button>
+        </div>
+        <h3>Run the command-line workflow</h3>
+        <div class="code">
+          <pre><code id="cmd-cli">datanuggets-flow path/to/fcs_folder</code></pre>
+          <button type="button" data-copy="cmd-cli" hidden>Copy</button>
+        </div>
+        <p>
+          The command finds candidate scatter populations in each FCS file, shows the gating
+          figure and asks which populations to keep. It then runs a joint clustering analysis and
+          writes the figures, tables and settings to a new output directory.
+        </p>
+        <h3>Run it from Python</h3>
+        <p>
+          The Python API exposes the same two stages. The first creates and saves the candidate
+          gates. The second analyzes the populations you select. The README has a
+          <a href="https://github.com/ron2k1/datanuggetsflowcytometry#run-it-from-python"
+            >complete example</a
+          >.
+        </p>
+        <h3>The datanuggets library</h3>
+        <p>
+          The nugget and weighted k-means implementations come from <code>datanuggets</code>,
+          which is its own package. Data nuggets bring a large dataset down to a size you can
+          explore with weighted clustering and PCA.
+        </p>
+        <div class="code">
+          <pre><code id="cmd-lib">python -m pip install "datanuggets[frame,plot]==0.1.0a3"</code></pre>
+          <button type="button" data-copy="cmd-lib" hidden>Copy</button>
+        </div>
+        <ul class="links">
+          <li><a href="https://pypi.org/project/datanuggets-flow/">datanuggets-flow on PyPI</a></li>
+          <li><a href="https://pypi.org/project/datanuggets/">datanuggets on PyPI</a></li>
+          <li><a href="https://github.com/ron2k1/datanuggets">datanuggets on GitHub</a></li>
+        </ul>
+      </section>
+
+      <section class="wrap" id="docs">
+        <h2>Documentation</h2>
+        <ul class="links">
+          <li>
+            <a
+              href="https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/app/running-locally.md"
+              >App guide</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/quickstart.md"
+              >Quickstart</a
+            >
+          </li>
+          <li>
+            <a href="https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/cli.md"
+              >Command reference</a
+            >
+          </li>
+          <li>
+            <a href="https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/api.md"
+              >Python API</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/methodology.md"
+              >Methodology</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/limitations.md"
+              >Limitations</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/reproducibility.md"
+              >Reproducibility</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/releases.md"
+              >Release notes</a
+            >
+          </li>
+        </ul>
+      </section>
+
+      <section class="wrap" id="papers">
+        <h2>Papers and acknowledgments</h2>
+        <h3>Core method</h3>
+        <p>
+          Beavers, T. E., Cheng, G., Duan, Y., Cabrera, J., Lubomirski, M., Amaratunga, D., and
+          Teigler, J. E. (2025). Data Nuggets: A Method for Reducing Big Data While Preserving
+          Data Structure. <cite>Journal of Computational and Graphical Statistics</cite>, 34(1),
+          330-342. Published online in 2024.
+          <a href="https://doi.org/10.1080/10618600.2024.2341896"
+            >doi:10.1080/10618600.2024.2341896</a
+          >.
+        </p>
+        <h3>Related research</h3>
+        <ul>
+          <li>
+            Dastgiri, M., Cabrera, J., Duan, Y., et al. (2026). Novel machine learning approach
+            to differential cell flow cytometry analysis based on projection pursuit.
+            <cite>Journal of Biopharmaceutical Statistics</cite>, 36(6), 1244-1256. Published
+            online in 2025.
+            <a href="https://doi.org/10.1080/10543406.2025.2490725"
+              >doi:10.1080/10543406.2025.2490725</a
+            >.
+          </li>
+          <li>
+            Duan, Y., Cabrera, J., and Emir, B. (2025). A New Projection Pursuit Index for Big
+            Data. <cite>Journal of Computational and Graphical Statistics</cite>, 34(4),
+            1566-1577.
+            <a href="https://doi.org/10.1080/10618600.2025.2468791"
+              >doi:10.1080/10618600.2025.2468791</a
+            >.
+          </li>
+          <li>
+            Cherasia, K. E., Cabrera, J., Fernholz, L. T., and Fernholz, R. (2023). Data Nuggets
+            in Supervised Learning. In M. Yi and K. Nordhausen (eds.),
+            <cite
+              >Robust and Multivariate Statistical Methods: Festschrift in Honor of David E.
+              Tyler</cite
+            >
+            (pp. 429-449). Springer. Published online in 2022.
+            <a href="https://doi.org/10.1007/978-3-031-22687-8_20"
+              >doi:10.1007/978-3-031-22687-8_20</a
+            >.
+          </li>
+        </ul>
+        <p>
+          The data nugget reduction and weighted clustering methods belong to their original
+          researchers and the maintainers of the R <code>datanugget</code> and
+          <code>WCluster</code> packages. <code>datanuggets-flow</code> builds on the
+          <a href="https://github.com/ron2k1/datanuggets"><code>datanuggets</code></a> Python
+          port. The scatter gate finder adapts Python code supplied by Prof. Javier Cabrera. The
+          <a href="https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/THIRD_PARTY.md"
+            >third-party notices</a
+          >
+          record the permissions and the upstream licenses.
+        </p>
+        <p>
+          The demonstration files in the app and the recorded test data come from Stefanie
+          Kreutmair and Susanne Unger (2026),
+          <cite
+            >Flow cytometry data of PBMC of critically ill, mechanically ventilated patients</cite
+          >
+          (V1), Zenodo,
+          <a href="https://doi.org/10.5281/zenodo.22079206">doi:10.5281/zenodo.22079206</a>.
+        </p>
+      </section>
+    </main>
+
+    <footer class="bottom">
+      <div class="wrap">
+        <ul class="links">
+          <li><a href="https://github.com/ron2k1/datanuggetsflowcytometry">Source on GitHub</a></li>
+          <li>
+            <a href="https://github.com/ron2k1/datanuggetsflowcytometry/releases">Releases</a>
+          </li>
+          <li><a href="https://github.com/ron2k1/datanuggetsflowcytometry/issues">Issues</a></li>
+          <li>
+            <a href="https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/LICENSE"
+              >License</a
+            >
+          </li>
+        </ul>
+      </div>
+    </footer>
+
+    <script>
+      // The copy buttons stay hidden unless the browser can write to the clipboard.
+      document.querySelectorAll('button[data-copy]').forEach(function (button) {
+        if (!navigator.clipboard) return;
+        button.hidden = false;
+        button.addEventListener('click', function () {
+          var code = document.getElementById(button.getAttribute('data-copy'));
+          navigator.clipboard.writeText(code.textContent.trim()).then(
+            function () {
+              button.textContent = 'Copied';
+              setTimeout(function () {
+                button.textContent = 'Copy';
+              }, 2000);
+            },
+            // A refused copy leaves the button as it is.
+            function () {}
+          );
+        });
+      });
+    </script>
+  </body>
+</html>

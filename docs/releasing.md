@@ -1,6 +1,6 @@
 # Releasing
 
-Merging a pull request publishes nothing. A release goes out only when a maintainer runs the release workflow with TestPyPI selected or pushes a `v*` tag. The tag publishes the package to PyPI as `datanuggets-flow` and the app's image to `ghcr.io/ron2k1/datanuggets-flow`.
+Merging a pull request publishes no package and no image. A release goes out only when a maintainer runs the release workflow with TestPyPI selected or pushes a `v*` tag. The tag publishes the package to PyPI as `datanuggets-flow` and the app's image to `ghcr.io/ron2k1/datanuggets-flow`. A merge does publish the [project page](https://ron2k1.github.io/datanuggetsflowcytometry/) when it changes `site/` or `docs/images/`, because `pages.yml` deploys them to GitHub Pages on every such push to `main`.
 
 ## What the workflows do
 
@@ -44,7 +44,7 @@ Keep the upstream notices and the dataset attribution in both archives and in th
    uv run --project app python app/web/tools/build_fixtures.py --config-only --out app/web/fixtures
    ```
 
-   `uv.lock` and `app/uv.lock` each record the package's version. The image installs with `uv sync --locked`, so a stale `app/uv.lock` fails its build. The last command rewrites the `/config` fixtures, whose run commands name the version. In `CITATION.cff`, set `version` to the release version and `date-released` to the day the tag is pushed. `tests/scripts/test_citation.py` fails while `version` differs from `project.version` in `pyproject.toml`. Merge the version, both lock files, the fixtures, `CITATION.cff`, [releases.md](releases.md) and the README together to `main`. The README is embedded in the package metadata, so an edit after upload can't repair that release's PyPI page.
+   `uv.lock` and `app/uv.lock` each record the package's version. The image installs with `uv sync --locked`, so a stale `app/uv.lock` fails its build. The last command rewrites the `/config` fixtures, whose run commands name the version. In `CITATION.cff`, set `version` to the release version and `date-released` to the day the tag is pushed. `tests/scripts/test_citation.py` fails while `version` differs from `project.version` in `pyproject.toml`. In `site/index.html`, change the alpha label, the image tag and the `datanuggets-flow` pip pin. `tests/scripts/test_site.py` fails while any of them differs from `project.version`. Merge the version, both lock files, the fixtures, `CITATION.cff`, `site/index.html`, [releases.md](releases.md) and the README together to `main`. That merge deploys the project page, so the page names the new version before the tag publishes it. Keep the time between the merge and the tag short. The README is embedded in the package metadata, so an edit after upload can't repair that release's PyPI page.
 2. In GitHub Actions, select release > Run workflow > main > check. Review the checks. Then run it again with testpypi and approve the `testpypi` deployment. Record the full commit hash of that run.
 3. In a fresh environment, download the exact wheel from TestPyPI without dependencies, then install it with its dependencies from PyPI:
 

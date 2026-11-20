@@ -31,6 +31,7 @@ The first runs the package's tests and the second the app's. Neither needs R. Th
 | `app.yml` | a pull request or a push to `main` that changes the app, the package or the Docker files, on manual dispatch, and inside a release | the app's tests, then its Docker image built natively on amd64 and arm64 and smoke-tested. Nothing is pushed |
 | `release.yml` | on manual dispatch for a check or TestPyPI, a pushed `v*` tag for PyPI | the four above, then the upload and, for a tag, `image.yml`, as [releasing.md](releasing.md) describes |
 | `image.yml` | inside a tag's release after the PyPI upload, or on manual dispatch on a tag already on PyPI | the app's image, pushed to `ghcr.io/ron2k1/datanuggets-flow` by digest, smoke-tested on amd64 and arm64, then tagged with the package version |
+| `pages.yml` | a push to `main` that changes `site/`, `docs/images/` or the workflow itself, and on manual dispatch | `site/` and the screenshots in `docs/images/`, deployed to GitHub Pages as the project page |
 
 ## Lint
 

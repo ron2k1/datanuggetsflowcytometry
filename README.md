@@ -14,7 +14,7 @@ The package builds on [`datanuggets`](https://pypi.org/project/datanuggets/), a 
 
 > **Research alpha (`0.1.0a3`).** This is an exploratory analysis tool. It isn't an automated cell-type identification system or a validated clinical analysis system. Its clusters are mathematical groupings, and they aren't confirmed biological populations. The API and analysis defaults may change.
 
-[App guide](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/app/running-locally.md) · [Command reference](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/cli.md) · [Python API](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/api.md) · [Methodology](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/methodology.md) · [Limitations](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/limitations.md)
+[Project page](https://ron2k1.github.io/datanuggetsflowcytometry/) · [App guide](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/app/running-locally.md) · [Command reference](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/cli.md) · [Python API](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/api.md) · [Methodology](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/methodology.md) · [Limitations](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/limitations.md)
 
 ## Get started
 
