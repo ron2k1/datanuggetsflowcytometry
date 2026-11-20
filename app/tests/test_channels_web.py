@@ -35,6 +35,10 @@ FILES = {
     "forward scatter only": ["FSC-H", "FL1-H", "Time"],
     "mass cytometer": ["Time", "Event_length", "Ce140Di", "Ir191Di", "Ir193Di"],
     "beckman navios": ["FS INT", "FS PEAK", "SS INT", "FL1 INT", "FL2 INT", "TIME"],
+    "lower case": ["Time", "fsc-a", "ssc-a", "cd3-a", "cd4-a"],
+    "ssea marker": ["FSC-A", "SSC-A", "SSEA4-A", "CD3-A"],
+    "long s": ["\N{LATIN SMALL LETTER LONG S}SC-A", "CD3-A"],
+    "newline": ["FS\n", "SS\n", "FL1", "FL2"],
     "one name twice": ["FSC-A", "FSC-A", "SSC-A", "CD3-A", "CD4-A"],
     "one area twice": ["FSC-A", "CD3-A", "CD3-A", "CD4-H"],
     "time only": ["Time"],
@@ -73,15 +77,16 @@ def js(tmp_path_factory):
 def test_the_constants_are_the_packages(js):
     from datanuggets_flow._defaults import (
         FLOW_CHANNEL_SUFFIX,
-        FLOW_SCATTER_PREFIXES,
+        FLOW_SCATTER_PATTERNS,
         FLOW_TIME_PATTERN,
     )
 
     got = js(
-        "return [config.FLOW_SCATTER_PREFIXES, config.FLOW_CHANNEL_SUFFIX,"
+        "return [config.FLOW_SCATTER_RES.map(r => [r.source, r.flags]), config.FLOW_CHANNEL_SUFFIX,"
         " config.FLOW_TIME_RE.source, config.FLOW_TIME_RE.flags];"
     )
-    assert got == [list(FLOW_SCATTER_PREFIXES), FLOW_CHANNEL_SUFFIX, FLOW_TIME_PATTERN, "i"]
+    scatter = [[p, "i"] for p in FLOW_SCATTER_PATTERNS]
+    assert got == [scatter, FLOW_CHANNEL_SUFFIX, FLOW_TIME_PATTERN, "i"]
 
 
 def test_time_is_the_packages(js):
@@ -108,6 +113,11 @@ def test_default_channels_are_the_packages(js):
     assert got == {name: default_channels(names) for name, names in FILES.items()}
     assert len(got["pbmc"]) == 32  # the demo's colour channels
     assert got["mass cytometer"] == ["Event_length", "Ce140Di", "Ir191Di", "Ir193Di"]
+    assert got["lower case"] == ["cd3-a", "cd4-a"]
+    assert got["ssea marker"] == ["SSEA4-A", "CD3-A"]
+    assert got["spectral"] == ["UV1-A", "V1-A"]  # the violet side scatter SSC-B-A left out
+    assert got["long s"] == FILES["long s"]  # matched in ASCII, so no scatter
+    assert got["newline"] == FILES["newline"]  # a name's end is its last character, in both
 
 
 @pytest.mark.parametrize(
@@ -125,6 +135,9 @@ def test_default_channels_are_the_packages(js):
         ("pbmc", None, "FSC-A", ["FSC-H", "FSC-A"]),
         ("beckman navios", None, None, ["FS INT", "SS INT"]),
         ("beckman navios", "FL1 INT", None, ["FL1 INT", "SS INT"]),
+        ("lower case", None, None, ["fsc-a", "ssc-a"]),
+        ("ssea marker", None, None, ["FSC-A", "SSC-A"]),
+        ("long s", None, None, ["\N{LATIN SMALL LETTER LONG S}SC-A", "CD3-A"]),
         ("one name twice", None, None, ["FSC-A", "SSC-A"]),
         ("one name twice", None, "FSC-A", ["CD3-A", "FSC-A"]),
         ("pbmc", "", "", ["FSC-A", "SSC-A"]),

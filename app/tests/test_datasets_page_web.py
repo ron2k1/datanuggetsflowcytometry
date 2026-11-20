@@ -546,14 +546,16 @@ def panels(tmp_path_factory):
 
 def read_in_tab(panels) -> str:
     """JS that hands the page the panels' files, file(name), as a browser's file chooser would,
-    and waits with until(n) for n uploads read in the tab."""
+    and waits with until(n) for n uploads read in the tab. blob(name, buf) is a file of those
+    bytes, which slices as a browser's File does."""
     paths = {name: str(path) for name, path in panels.items()}
     return (
         "const { readFile } = await import('node:fs/promises');"
         " globalThis.FileReader = class { readAsArrayBuffer(f) { this.result = f.buf; queueMicrotask(() => this.onload()); } };"
         f" const paths = {json.dumps(paths)};"
+        " const blob = (name, buf) => ({ name, size: buf.byteLength, buf, slice(a, b) { return blob(name, buf.slice(a, b)); } });"
         " const file = async name => { const b = await readFile(paths[name]);"
-        "   return { name, size: b.length, buf: b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) }; };"
+        "   return blob(name, b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)); };"
         " const until = async n => { for (let i = 0; i < 500 && S.localUploads.length < n; i++) await tick(); await tick(); };"
     )
 
@@ -616,21 +618,21 @@ def test_a_batch_announces_each_dataset_it_makes(page, panels):
 def test_a_batchs_notes_follow_its_refusal_and_failure_toasts(page, panels):
     """The page has one toast, so a note shown at once would hide the last file's refusal or
     failure; the notes wait their turn after it. 202.txt is six bytes that are not an FCS file,
-    which the reader refuses by its header, and 202-cut.fcs is 202.fcs's first 64 bytes, which it
-    cannot parse."""
+    which the uploader refuses by its header before sending it, and 202-cut.fcs is 202.fcs's first
+    64 bytes, which the reader cannot parse."""
     got = page(
         read_in_tab(panels) + " const real = setTimeout; let at = 0; const seen = [];"
         " globalThis.setTimeout = (f, ms = 0, ...a) => real(() => { const was = at; at = ms; try { f(...a); } finally { at = was; } }, 0);"
         " Object.defineProperty($('#toast'), 'textContent', { get() { return this.own; },"
         "   set(v) { this.own = String(v); seen.push([at, this.own]); } });"
         " const whole = await file('202.fcs'), less = await file('202-less.fcs');"
-        " const txt = { name: '202.txt', size: 6, buf: new TextEncoder().encode('NOTFCS').buffer }, cut ={ ...whole, name: '202-cut.fcs', size: 64, buf: whole.buf.slice(0, 64) };"
+        " const txt = blob('202.txt', new TextEncoder().encode('NOTFCS').buffer), cut = blob('202-cut.fcs', whole.buf.slice(0, 64));"
         " emit(EV.filesDrop, { files: [whole, txt, less, cut] }); await until(2);"
         " for (let i = 0; i < 50 && seen.length < 4; i++) await tick();"
         " return seen;"
     )
     four, five = new_note(4, FLUOR), new_note(5, FLUOR[:2])
-    assert got[0] == [0, "202.txt: This is not an FCS 2.0, 3.0 or 3.1 file."]
+    assert got[0] == [0, "202.txt is not an FCS 2.0, 3.0 or 3.1 file."]
     assert got[1][0] == 0 and got[1][1].startswith("202-cut.fcs: ")
     assert got[2:] == [[3600, four], [7200, five]]
 
@@ -643,10 +645,32 @@ def test_a_dataset_is_named_once_when_batches_overlap(page, panels):
         " api.upload = (f, p) => new Promise(ok => held.push(() => ok(up(f, p))));"
         " const [whole, less] = [await file('202.fcs'), await file('202-less.fcs')];"
         " emit(EV.filesDrop, { files: [whole] }); emit(EV.filesDrop, { files: [less] });"
+        " for (let i = 0; i < 50 && held.length < 2; i++) await tick();"  # each header read first
         " held[0](); await until(1); held[1](); await until(2);"
         " return S.activity.map(a => a.msg).filter(m => m.includes('new dataset'));"
     )
     assert got == [new_note(4, FLUOR), new_note(5, FLUOR[:2])]
+
+
+def test_a_file_without_an_fcs_header_is_refused_before_it_is_sent(page, panels):
+    """The uploader reads a file's first six bytes before sending it, and refuses one that doesn't
+    start FCS2.0, FCS3.0 or FCS3.1 whatever its name, so a large file that isn't FCS isn't sent
+    only to be refused. 202.B08, named as a FACSCalibur names its files, is sent by its header."""
+    got = page(
+        read_in_tab(panels) + " const up = api.upload, posted = [];"
+        " api.upload = (f, p) => { posted.push(f.name); return up(f, p); };"
+        " const text = s => new TextEncoder().encode(s).buffer, whole = await file('202.fcs');"
+        " const files = [blob('notes.fcs', text('NOTFCS and more')), blob('short.fcs', text('FCS'))];"
+        " emit(EV.filesDrop, { files: [...files, blob('202.B08', whole.buf)] }); await until(1);"
+        " return [posted, S.activity.map(a => a.msg).filter(m => m.startsWith('Upload '))];"
+    )
+    assert got == [
+        ["202.B08"],
+        [
+            "Upload notes.fcs: notes.fcs is not an FCS 2.0, 3.0 or 3.1 file.",
+            "Upload short.fcs: short.fcs is not an FCS 2.0, 3.0 or 3.1 file.",
+        ],
+    ]
 
 
 def test_escape_and_leaving_the_field_cancel_and_close_nothing_else(page):

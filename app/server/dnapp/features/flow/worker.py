@@ -6,7 +6,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from dnapp.core.config import FLOW_FIGURES, FLOW_RECORD, FLOW_STEPS
+from dnapp.core.config import FLOW_FIGURES, FLOW_RECORD, FLOW_STEPS, PROGRESS_START
 from dnapp.core.package import flow
 from dnapp.core.protocols import Reporter
 
@@ -28,13 +28,17 @@ def flow_work(spec: dict, rep: Reporter, out: Path) -> dict:
         shutil.copyfile(gates / name, out / name)
 
     def on_event(ev) -> None:
-        # a per-file "cofactor" or "scale" event's message is empty, and logs nothing; the
-        # "transform" event's gives the rule and a line per channel with its cofactor
+        # a per-file "channels", "cofactor" or "scale" event's message is empty, and logs
+        # nothing; the "transform" event's gives the rule and a line per channel with its cofactor
         rep.log(ev.message)
         if ev.stage == "nuggets":
             lo, hi = FLOW_STEPS["nuggets_from"], FLOW_STEPS["nuggets_to"]
             p = lo + (hi - lo) * (ev.file or 0) / max(ev.n_files, 1)
             msg = f"Nuggets for file {ev.file} of {ev.n_files}"
+        elif ev.stage == "channels" and ev.file:
+            lo, hi = PROGRESS_START, FLOW_STEPS["select"]
+            p = lo + (hi - lo) * ev.file / max(ev.n_files, 1)
+            msg = f"Channels: read file {ev.file} of {ev.n_files}"
         elif ev.stage == "cofactor" and ev.file:
             lo, hi = FLOW_STEPS["select"], FLOW_STEPS["cofactor"]
             p = lo + (hi - lo) * ev.file / max(ev.n_files, 1)

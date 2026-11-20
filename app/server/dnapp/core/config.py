@@ -106,8 +106,10 @@ TIMEOUT_MESSAGE = "The job ran longer than the {s} second limit and was stopped.
 # a job's progress bar: where each kind's steps put it (the worker never reports 1.0; done does)
 PROGRESS_START = 0.02
 GATE_SHARE = 0.9  # the gate files' part of a gate job's bar; its figures take the rest
-# the auto cofactor's pass over the files moves the bar from "select" to "cofactor", a step per
-# file read (a set cofactor makes no such pass), then the Scale stage's pass from "transform" to
+# the default channels' check for values that aren't numbers moves the bar from PROGRESS_START to
+# "select", a step per file read (channels sent by name make no such pass); the auto cofactor's
+# pass over the files moves it from "select" to "cofactor", a step per file read (a set cofactor
+# makes no such pass), then the Scale stage's pass from "transform" to
 # "scale", and the nuggets start from there. The cofactor's pass reads the same files and does
 # less with them (about 40% of the Scale pass's time on four FlowCAP files), so its band is the
 # narrower one

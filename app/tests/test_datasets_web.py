@@ -765,6 +765,19 @@ def test_the_dataset_limits_are_the_servers(js):
     ]
 
 
+def test_the_page_knows_an_fcs_header_as_the_server_does(js):
+    """The uploader's FCS_HEADER_RE, on its first FCS_HEAD_BYTES, takes the headers the server's
+    FCS_MAGIC takes and no others."""
+    from dnapp.core.config import FCS_MAGIC
+
+    heads = ["FCS2.0", "FCS3.0", "FCS3.1", "FCS1.0", "FCS3.2", "fcs3.1", "FCS3", ""]
+    got = js(
+        f"return [config.FCS_HEAD_BYTES, {json.dumps(heads)}.map(h => config.FCS_HEADER_RE.test(h))];"
+    )
+    assert got == [len(FCS_MAGIC[0]), [h.encode() in FCS_MAGIC for h in heads]]
+    assert {len(m) for m in FCS_MAGIC} == {len(FCS_MAGIC[0])}
+
+
 def test_a_batch_names_each_new_dataset_once_another_was_there(js, pbmc):
     """After a batch, each dataset it made while another dataset was already there gets a line
     naming it and what it lacks or adds against the largest other dataset (the earliest on a tie),

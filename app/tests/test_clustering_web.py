@@ -222,6 +222,31 @@ def test_centers_the_page_doesnt_offer_show_as_sent(js):
     ]
 
 
+def test_the_default_ticks_send_no_channel_list(js):
+    """Ticks that are the first file's default channels, less a dye the Live cells step handed
+    on, send no channel list, so the package applies its own default rule (which leaves out a
+    default channel holding NaN, with a warning); other ticks are sent as ticked."""
+    got = js(
+        "const { clusterForm, channelsOf } = await import('./features/population-picker/cluster.js');"
+        f" const g = {json.dumps(GATE)}; {STATE}"
+        " const out = [channelsOf(g, st)];"
+        " st.channels = new Set(['C-A', 'B-A']); out.push(channelsOf(g, st));"
+        " st.channels.delete('C-A'); out.push(channelsOf(g, st));"
+        " st.dye = 'C-A'; out.push(channelsOf(g, st));"
+        " st.dye = 'FSC-A'; st.channels.add('C-A'); out.push(channelsOf(g, st));"
+        " st.dye = null; st.channels = new Set(); out.push(channelsOf(g, st));"
+        " return out;"
+    )
+    assert got == [
+        {"channels": None, "exclude_channels": []},
+        {"channels": None, "exclude_channels": []},
+        {"channels": ["B-A"], "exclude_channels": []},
+        {"channels": None, "exclude_channels": ["C-A"]},
+        {"channels": None, "exclude_channels": []},  # FSC-A isn't a default, so not left out
+        {"channels": [], "exclude_channels": []},
+    ]
+
+
 @pytest.mark.parametrize(
     ("settings", "want"),
     [

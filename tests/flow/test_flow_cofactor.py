@@ -197,11 +197,13 @@ def test_auto_takes_each_channel_from_the_raw_values_the_run_clusters(tmp_path):
 
 @pytest.mark.parametrize(
     ("cofactor", "reads", "tallied"),
-    [("auto", 3, True), (6000.0, 2, False), (0, 2, False)],
+    [("auto", 4, True), (6000.0, 3, False), (0, 3, False)],
 )
 def test_only_auto_reads_the_files_once_more(tmp_path, cofactor, reads, tallied):
     """The tally is one more pass over each file, before the transform event, a "cofactor"
-    progress event per file with the cells it counted; a number skips it."""
+    progress event per file with the cells it counted; a number skips it. The default channels'
+    check for values that aren't numbers is a pass of its own, first, a "channels" event per
+    file the same way."""
     read, seen = _reader()
     events = []
     settings = ClusterSettings(cofactor=cofactor, **RUN)
@@ -209,6 +211,8 @@ def test_only_auto_reads_the_files_once_more(tmp_path, cofactor, reads, tallied)
     assert seen.count("a.fcs") == seen.count("b.fcs") == reads
     tally = [("cofactor", 1), ("cofactor", 2)] if tallied else []
     assert [(e.stage, e.file) for e in events] == [
+        ("channels", 1),
+        ("channels", 2),
         ("select", None),
         *tally,
         ("transform", None),
@@ -219,11 +223,10 @@ def test_only_auto_reads_the_files_once_more(tmp_path, cofactor, reads, tallied)
         ("nuggets", 2),
         ("cluster", None),
     ]
+    counted = [(2, "", {"cells": N}), (2, "", {"cells": N - 1})]
+    assert [(e.n_files, e.message, e.data) for e in events[:2]] == counted
     if tallied:
-        assert [(e.n_files, e.message, e.data) for e in events[1:3]] == [
-            (2, "", {"cells": N}),
-            (2, "", {"cells": N - 1}),
-        ]
+        assert [(e.n_files, e.message, e.data) for e in events[3:5]] == counted
 
 
 def test_the_transform_event_gives_each_channels_cofactor_and_why(tmp_path):
@@ -267,7 +270,7 @@ def test_a_number_keeps_its_line_and_record(tmp_path, cofactor, line, record):
     event = _transform(tmp_path, ClusterSettings(cofactor=cofactor), events=events)
     assert event.message == line
     assert event.data == {"transform": record.transform()}
-    assert [e.stage for e in events] == ["select"]
+    assert [e.stage for e in events] == ["channels", "channels", "select"]  # no tally
 
 
 def test_row_filters_change_the_tally(tmp_path):

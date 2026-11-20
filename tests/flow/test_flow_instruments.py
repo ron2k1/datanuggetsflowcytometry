@@ -17,6 +17,7 @@ from datanuggets_flow.figures import gates_figure
 from datanuggets_flow.livecells import kept_values
 from datanuggets_flow.pipeline import (
     default_channels,
+    gate_channels,
     gate_files,
     make_nuggets,
     on_scale,
@@ -26,6 +27,7 @@ from datanuggets_flow.settings import ClusterSettings, GateSettings
 from flowcases import load_case, read_202
 
 BV510 = "FJComp-BV510-A"  # 202's second fluorescence channel
+LONG_S = "\N{LATIN SMALL LETTER LONG S}SC-A"  # which Python's IGNORECASE alone takes for SSC-A
 
 
 @pytest.mark.parametrize(
@@ -51,6 +53,27 @@ def test_without_area_channels_the_default_is_every_marker_channel(pnn, want):
     assert default_channels(pnn) == want
     assert resolve_channels([a], ClusterSettings())[0] == want
     assert resolve_channels([a], ClusterSettings(exclude_channels=(want[0],)))[0] == want[1:]
+
+
+@pytest.mark.parametrize(
+    ("pnn", "scatter", "markers"),
+    [
+        # names in lower case, as some exports write them
+        (["fsc-a", "ssc-a", "cd3-a", "cd4-a"], ("fsc-a", "ssc-a"), ["cd3-a", "cd4-a"]),
+        # a marker named from SS, SSEA-4, is no side scatter
+        (["FSC-A", "SSC-A", "SSEA4-A", "CD3-A"], ("FSC-A", "SSC-A"), ["SSEA4-A", "CD3-A"]),
+        # a Navios's FS INT and SS INT, and a spectral cytometer's violet SSC-B-A
+        (["FS INT", "SS INT", "FL1 INT", "FL2 INT"], ("FS INT", "SS INT"), ["FL1 INT", "FL2 INT"]),
+        (["FSC-A", "SSC-A", "SSC-B-A", "V1-A", "B1-A"], ("FSC-A", "SSC-A"), ["V1-A", "B1-A"]),
+        # matched in ASCII, as the app's page matches: a long s is no s, so no scatter here
+        ([LONG_S, "CD3-A"], (LONG_S, "CD3-A"), [LONG_S, "CD3-A"]),
+    ],
+)
+def test_scatter_is_fs_or_ss_before_c_a_space_a_dash_or_nothing(pnn, scatter, markers):
+    """Scatter is named FS or SS followed by C, a space, a dash, an underscore or nothing, in any
+    case: the gate takes it and the default channels leave it out."""
+    assert gate_channels(pnn) == scatter
+    assert default_channels(pnn) == markers
 
 
 def test_stain_differences_name_each_channel_its_stains_and_files():
@@ -162,6 +185,81 @@ def test_a_channel_holding_values_that_are_not_numbers_is_named():
     # Live cells reads the same cells and counts NaN in each histogram instead of stopping
     (got,) = kept_values([sample], [[6]], pnn[2:], read=holed).files
     assert np.isnan(got.values[:, 1]).any() and np.isinf(got.values[:, 2]).any()
+
+
+def _nan_in(*columns):
+    """A reader of 202.fcs with NaN in every 7th event of columns, as a label column holds it."""
+
+    def read(path):
+        x, names, stains = read_202(path)
+        x[::7, list(columns)] = float("nan")
+        return x, names, stains
+
+    return read
+
+
+def test_the_default_channels_leave_out_one_holding_values_that_are_not_numbers():
+    """The run chose the default channels, so it leaves out one holding NaN or an infinite value
+    among the cells kept, as a processed file's label column can, with a warning, and clusters the
+    rest; a channel the run was given by name is refused instead (above). One pass over the files
+    finds them, whatever the cofactor. With fewer than two left, the run says to name them."""
+    events, pnn, pns = read_202(None)
+    masks = load_case("202").his_masks
+    sample = {"path": Path("202.fcs"), "n_events": len(events), "pnn": pnn, "pns": pns}
+    sample["masks"] = masks
+    channels, labels = pnn[2:], [f"label of {c}" for c in pnn[2:]]
+
+    def finite(read, cofactor: str | float = "auto"):
+        settings = ClusterSettings(cofactor=cofactor)
+        return clustering.finite_channels([sample], [[6]], channels, labels, settings, read=read)
+
+    with pytest.warns(DataNuggetWarning) as w:
+        got = finite(_nan_in(3))
+    assert got == ([channels[0], channels[2]], [labels[0], labels[2]])
+    assert [str(x.message) for x in w] == [
+        (
+            f"{BV510} holds values that aren't numbers (NaN or infinite) among the cells kept, so "
+            "it is left out of the default channels"
+        )
+    ]
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert finite(read_202) == (channels, labels)
+        assert finite(read_202, 6000.0) == (channels, labels)
+    with pytest.raises(FlowError) as e:
+        finite(_nan_in(3, 4))
+    assert str(e.value) == (
+        f"{BV510}, FJComp-Spark Blue-A hold values that aren't numbers (NaN or infinite) among the "
+        "cells kept, which leaves fewer than two default channels; name the channels to cluster "
+        "with channels"
+    )
+
+
+def test_the_cli_clusters_the_default_channels_that_are_numbers(
+    tmp_path, monkeypatch, capsys, close_figures
+):
+    """202.fcs with NaN in BV510: the command prints the warning, clusters the other two default
+    channels, and still refuses BV510 when --channels names it."""
+    folder = tmp_path / "in"
+    folder.mkdir()
+    (folder / "a.fcs").write_bytes(b"")
+    monkeypatch.setattr(pick, "read_fcs", _nan_in(3))
+    argv = [str(folder), "--pops", "6", "--no-show", "--dn-num2", "20", "--dn-num1", "2000"]
+    argv += ["--k", "2", "--no-tsne"]
+    pick.main([*argv, "--out", str(tmp_path / "out")])
+    lines = [x for x in capsys.readouterr().out.splitlines() if x.startswith("warning: ")]
+    assert lines == [
+        (
+            f"warning: {BV510} holds values that aren't numbers (NaN or infinite) among the cells "
+            "kept, so it is left out of the default channels"
+        )
+    ]
+    columns = (tmp_path / "out" / "cluster_centers.csv").read_text().splitlines()[0]
+    assert BV510 not in columns and "FJComp-Spark Blue-A" in columns
+    named = ["--channels", f"FJComp-Alexa Fluor 700-A,{BV510}", "--out", str(tmp_path / "out2")]
+    with pytest.raises(SystemExit) as e:
+        pick.main([*argv, *named])
+    assert f"aren't numbers (NaN or infinite) in {BV510} among the cells kept" in str(e.value)
 
 
 def _past_range(n_far):

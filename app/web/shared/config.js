@@ -28,13 +28,19 @@ export const LIVECELLS_BINS = 128;      // histogram bins the Live cells step as
 export const COUNTS_QUIET_MS = 300;     // Live cells: quiet after a line moves before POST .../counts
 export const PICK_QUIET_MS = 400;       // Live cells: quiet after a channel pick before POST .../livecells
 // The package's channel-name constants, which shared/channels.js applies by its rules (app/tests
-// pins them): forward and side scatter by prefix (FLOW_SCATTER_PREFIXES: FSC-A and SSC-A, and a
-// Beckman Navios's FS INT and SS INT), the area suffix (FLOW_CHANNEL_SUFFIX), and the time
-// channel (FLOW_TIME_PATTERN, matched ignoring case: Time, Time (s), HDR-T). None names a channel
-// a file must have.
-export const FLOW_SCATTER_PREFIXES = ['FS', 'SS'];
+// pins them): forward and side scatter (FLOW_SCATTER_PATTERNS: FS or SS followed by C, a space, a
+// dash, an underscore or nothing, in any case, so FSC-A, SSC-B-A, a Beckman Navios's FS INT and
+// fsc-a, never a marker such as SSEA4-A; "nothing" is the name's very end, written so Python and
+// JavaScript agree), the area suffix (FLOW_CHANNEL_SUFFIX), and the time channel
+// (FLOW_TIME_PATTERN, matched ignoring case: Time, Time (s), HDR-T). None names a channel a file
+// must have.
+export const FLOW_SCATTER_RES = [/^fs(c|[ _-]|(?![\s\S]))/i, /^ss(c|[ _-]|(?![\s\S]))/i];
 export const FLOW_CHANNEL_SUFFIX = '-A';
 export const FLOW_TIME_RE = /^(time|hdr-t)\b/i;
+// An FCS file's first bytes, the server's FCS_MAGIC (core/config.py; app/tests pins it): the
+// uploader reads them and refuses a file without them before sending it.
+export const FCS_HEADER_RE = /^FCS(2\.0|3\.0|3\.1)/;
+export const FCS_HEAD_BYTES = 6;
 // POST /datasets's limits, the server's DATASET_* (core/config.py), which the fixture transport
 // checks as the server does; a length counts code points.
 export const DATASET_NAME_MAX = 60;     // characters in a dataset's name

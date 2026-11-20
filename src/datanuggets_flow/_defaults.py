@@ -22,20 +22,23 @@ FINDER_T22 = 0.5
 
 # datanuggets-flow's defaults: reference, cfc.py's mirrored_area, as the area rule, where the
 # library's lymphmacro_finder defaults to find_area; the channels it clusters, every -A channel but
-# the scatter ones, named with FLOW_SCATTER_PREFIXES (every channel but those and Time when a file
-# has fewer than two, FLOW_TIME_PATTERN below); the arcsinh cofactor; the Scale stage, each
+# the scatter ones, named as FLOW_SCATTER_PATTERNS match (every channel but those and Time when a
+# file has fewer than two, FLOW_TIME_PATTERN below); the arcsinh cofactor; the Scale stage, each
 # channel centred and scaled to SD 1 by its mean and SD pooled over the files; nuggets per file,
 # where create_dn's own default is DN_NUM2; every core for create_dn, which doesn't change its
 # results; the clusters; and the output folder, named by the UTC time a run starts. No channel
-# name is fixed: the gate takes the first file's forward and side scatter by their prefixes,
-# preferring an -A channel, or its marker channels when it has none (gate_channels). FS and SS
-# take FSC-A and SSC-A as well as a Beckman Navios's FS INT and SS INT. Events past a gate
-# channel's range ($PnR), up to FLOW_OFFSCALE_MAX of a file's events, are left out of the
-# finder's grid and of every population; more than that and the range doesn't describe the
-# values, so every event is gated
+# name is fixed: the gate takes the first file's forward and side scatter by their names,
+# preferring an -A channel, or its marker channels when it has none (gate_channels). Scatter is
+# named FS or SS followed by C, a space, a dash, an underscore or nothing, matched ignoring case in
+# ASCII as the app's page matches: FSC-A, a spectral cytometer's SSC-B-A, a Beckman Navios's FS INT
+# and a lowercase fsc-a are scatter, a marker named from SS such as SSEA4-A is not; forward first,
+# then side. "Nothing" is (?![\s\S]), the name's very end, where Python's $ would also take a
+# trailing newline and JavaScript's would not. Events past a gate channel's range ($PnR), up to
+# FLOW_OFFSCALE_MAX of a file's events, are left out of the finder's grid and of every population;
+# more than that and the range doesn't describe the values, so every event is gated
 FLOW_DISC = "reference"
 FLOW_CHANNEL_SUFFIX = "-A"
-FLOW_SCATTER_PREFIXES = ("FS", "SS")
+FLOW_SCATTER_PATTERNS = (r"^fs(c|[ _-]|(?![\s\S]))", r"^ss(c|[ _-]|(?![\s\S]))")
 FLOW_OFFSCALE_MAX = 0.01
 # the Transform stage's cofactor. "auto" picks one per clustered channel, once per run and before
 # any arcsinh, from the raw values of the cells the run clusters (the populations kept, after the

@@ -61,7 +61,7 @@ The finder's tunable values are in `datanuggets_flow._defaults`, and each has a 
 | `MIN_POINTS` | `gate` | 3 | An area needs more than 3 cells, and its gate more than 3 events | :208 |
 | The first-peak rule | `gate`, `peaks` | | The first peak by SSC row takes `t11` and `t21`, the others `t12` and `t22` | :186-187 |
 
-`find_area` and `mirrored_area` default to `t1=35` and `t2=0.85`, `AREA_T1` and `AREA_T2` in `peaks`, from :102. The finder always passes its own thresholds, so those defaults are never reached and `gates.json` doesn't record them. The other `datanuggets-flow` defaults, from the scatter prefixes and the off-scale share to the t-SNE's seed, are in `_defaults` too, and [cli.md](cli.md#options) lists them with their flags.
+`find_area` and `mirrored_area` default to `t1=35` and `t2=0.85`, `AREA_T1` and `AREA_T2` in `peaks`, from :102. The finder always passes its own thresholds, so those defaults are never reached and `gates.json` doesn't record them. The other `datanuggets-flow` defaults, from the scatter patterns and the off-scale share to the t-SNE's seed, are in `_defaults` too, and [cli.md](cli.md#options) lists them with their flags.
 
 ### The `datanuggets-flow` pipeline
 

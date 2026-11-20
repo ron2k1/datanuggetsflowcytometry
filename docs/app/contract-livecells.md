@@ -300,8 +300,10 @@ with **Skip** and **Continue**. Skip goes to the cluster form and adds nothing.
   - The filters appear in the filter builder, visible and editable. The dye is unticked in the
     channel checkboxes, with a note that it was excluded.
   - The run request sends `channels: null, exclude_channels: [dye]` when the ticked set equals
-    `default_channels` minus the dye. Otherwise it sends the explicit ticked `channels` and
-    `exclude_channels: []`, because the package refuses the two together.
+    `default_channels` minus the dye, and `channels: null, exclude_channels: []` when it
+    equals `default_channels` with no dye, so the package applies its own default rule.
+    Otherwise it sends the explicit ticked `channels` and `exclude_channels: []`, because
+    the package refuses the two together.
   - Back returns to Live cells with the lines kept.
 - The gate job lookup in `views/gate.js` must match `kind === "gate"` as well as `gate_id`, since
   livecells jobs carry the gate's id. Two more places in the merged web read a job's `gate_id`

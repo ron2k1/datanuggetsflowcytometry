@@ -178,21 +178,22 @@ def _parser() -> argparse.ArgumentParser:
     channels = p.add_mutually_exclusive_group()
     channels.add_argument(
         "--channels",
-        help="comma-separated channels to cluster (default: every -A channel but scatter, FS and "
-        "SS, or every channel but those and Time when a file has fewer than two)",
+        help="comma-separated channels to cluster (default: every -A channel but scatter, or "
+        "every channel but those and Time when a file has fewer than two; a default channel "
+        "holding NaN or an infinite value is left out with a warning)",
     )
     channels.add_argument(
         "--exclude-channels", help="comma-separated channels to leave out of the default ones"
     )
     p.add_argument(
         "--fsc",
-        help="the channel the gate takes across (default: the first file's forward scatter, an "
-        "FS channel ending -A first, or its first marker channel when it has none)",
+        help="the channel the gate takes across (default: the first file's forward scatter, one "
+        "ending -A first, or its first marker channel when it has none)",
     )
     p.add_argument(
         "--ssc",
-        help="the channel the gate takes up (default: the first file's side scatter, an SS "
-        "channel ending -A first, or a marker channel when it has none)",
+        help="the channel the gate takes up (default: the first file's side scatter, one ending "
+        "-A first, or a marker channel when it has none)",
     )
     p.add_argument(
         "--disc",
