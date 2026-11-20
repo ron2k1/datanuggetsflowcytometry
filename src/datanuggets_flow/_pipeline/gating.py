@@ -3,6 +3,7 @@ counted and described, a line each."""
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
@@ -10,12 +11,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from datanuggets_flow._defaults import (
-    FLOW_CHANNEL_SUFFIX,
-    FLOW_OFFSCALE_MAX,
-    FLOW_SCATTER_PREFIXES,
-)
-from datanuggets_flow._pipeline.clustering import default_channels
+from datanuggets_flow._defaults import FLOW_CHANNEL_SUFFIX, FLOW_OFFSCALE_MAX
+from datanuggets_flow._pipeline.clustering import SCATTER, default_channels
 from datanuggets_flow._pipeline.fcs import read_fcs, read_ranges
 from datanuggets_flow._pipeline.records import (
     OnEvent,
@@ -37,18 +34,19 @@ def gate_channels(
 ) -> tuple[str | None, str | None]:
     """The gate's two channels for a file with channels pnn, fsc and ssc where given. One not
     given is the file's forward scatter for fsc, side scatter for ssc: its first channel named
-    so (FLOW_SCATTER_PREFIXES) ending in -A, else its first named so, else the first of its
-    default_channels, as on a mass cytometer, which records no scatter. Never the other's channel;
-    None when the file has no channel left."""
+    so (SCATTER) ending in -A, else its first named so, else the first of its default_channels,
+    as on a mass cytometer, which records no scatter. Never the other's channel; None when the
+    file has no channel left."""
+    forward, side = SCATTER
 
-    def pick(prefix: str, other: str | None) -> str | None:
-        named = [c for c in pnn if c.startswith(prefix) and c != other]
+    def pick(scatter: re.Pattern[str], other: str | None) -> str | None:
+        named = [c for c in pnn if scatter.match(c) and c != other]
         areas = [c for c in named if c.endswith(FLOW_CHANNEL_SUFFIX)]
         rest = [c for c in default_channels(pnn) if c != other]
         return next(iter(areas + named + rest), None)
 
-    fsc = fsc or pick(FLOW_SCATTER_PREFIXES[0], ssc)
-    return fsc, ssc or pick(FLOW_SCATTER_PREFIXES[1], fsc)
+    fsc = fsc or pick(forward, ssc)
+    return fsc, ssc or pick(side, fsc)
 
 
 def on_channels(settings: GateSettings, pnn: Sequence[str]) -> GateSettings:

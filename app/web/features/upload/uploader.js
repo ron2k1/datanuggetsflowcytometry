@@ -1,11 +1,13 @@
 // Uploads the user starts, FCS files only: the file chooser (EV.filesPick) and dropped files
 // (EV.filesDrop). A file is known as FCS by its header, whatever its name (a FACSCalibur names its
-// files .B08), so the server, or the local reader, refuses the others. Files in flight sit in S.inflight; each move emits EV.uploadsChange. Every
-// upload of a batch gets a tab: a plain batch shows its last upload, while a batch whose sender
-// passed done(uploads) opens its tabs behind the current one, hands the uploads to done and
-// redraws. S.lastBatch keeps the last batch's ids. Each dataset the batch made while another was
-// there is named in a toast, one after another, and in the activity log.
-import { TOAST_MS } from '../../shared/config.js';
+// files .B08): the uploader reads a file's first bytes and refuses one without the header before
+// sending it, and the server, or the local reader, refuses it too when the browser can't read
+// them. Files in flight sit in S.inflight; each move emits EV.uploadsChange. Every upload of a
+// batch gets a tab: a plain batch shows its last upload, while a batch whose sender passed
+// done(uploads) opens its tabs behind the current one, hands the uploads to done and redraws.
+// S.lastBatch keeps the last batch's ids. Each dataset the batch made while another was there is
+// named in a toast, one after another, and in the activity log.
+import { FCS_HEAD_BYTES, FCS_HEADER_RE, TOAST_MS } from '../../shared/config.js';
 import { newDatasetNotes } from '../../shared/datasets.js';
 import { fmtBytes } from '../../shared/format.js';
 import { toast } from '../../shared/dom.js';
@@ -18,11 +20,25 @@ const moved = () => emit(EV.uploadsChange);
 // dataset there is to the others', so a batch that overlapped it names none of them again.
 const pending = new Set();
 
-function precheck(file) {
+// A file's first FCS_HEAD_BYTES as text, or null when the browser can't read them.
+function readHead(file) {
+  return new Promise(resolve => {
+    try {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String.fromCharCode(...new Uint8Array(fr.result)));
+      fr.onerror = () => resolve(null);
+      fr.readAsArrayBuffer(file.slice(0, FCS_HEAD_BYTES));
+    } catch { resolve(null); }
+  });
+}
+
+async function precheck(file) {
   // The same name and size is the same file again; a second copy would count its sample twice.
   if (allUploads().some(u => u.name === file.name && u.bytes === file.size)) return `${file.name} is already uploaded.`;
   const cap = (caps() || {}).upload_fcs_bytes;
   if (cap && file.size > cap) return `${file.name} is ${fmtBytes(file.size)}; this workspace takes FCS files up to ${fmtBytes(cap)}.`;
+  const head = await readHead(file);
+  if (head !== null && !FCS_HEADER_RE.test(head)) return `${file.name} is not an FCS 2.0, 3.0 or 3.1 file.`;
   return null;
 }
 
@@ -32,7 +48,7 @@ async function uploadFiles(files, { done = null } = {}) {
   pending.add(known);
   for (const file of files) {
     const item = { name: file.name, bytes: file.size, p: 0, err: null };
-    const bad = precheck(file);
+    const bad = await precheck(file);
     if (bad) { toast(bad, true); warned = true; activity(`Upload ${file.name}: ${bad}`); continue; }
     S.inflight.push(item); moved();
     try {

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "datanuggets-flow"
-version = "0.1.0a4"
+version = "0.1.0a5"
 description = "Clusters flow cytometry events across FCS files with data nuggets."
 readme = "README.md"
 requires-python = ">=3.12"

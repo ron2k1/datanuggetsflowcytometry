@@ -74,16 +74,17 @@ export function applyHandoff(st, result) {
   st.live.handed = filters;
 }
 
-// channels and exclude_channels for the run: null + [dye] when the ticks are the defaults less
-// the dye, so the package applies its own default rule; otherwise the ticked list and [], since
-// the package refuses the two together.
+// channels and exclude_channels for the run: null, with [dye] when a default channel is the dye,
+// when the ticks are the defaults less any dye, so the package applies its own default rule (and
+// leaves out a default channel holding NaN, with a warning); otherwise the ticked list and [],
+// since the package refuses the two together.
 export function channelsOf(g, st) {
   const ticked = [...st.channels];
   const defaults = g.files[0] ? g.files[0].default_channels : [];
-  const dye = st.dye;
-  if (dye && defaults.includes(dye)) {
-    const rest = defaults.filter(c => c !== dye);
-    if (ticked.length === rest.length && rest.every(c => st.channels.has(c))) return { channels: null, exclude_channels: [dye] };
+  const dye = st.dye && defaults.includes(st.dye) ? st.dye : null;
+  const rest = defaults.filter(c => c !== dye);
+  if (ticked.length === rest.length && rest.every(c => st.channels.has(c))) {
+    return { channels: null, exclude_channels: dye ? [dye] : [] };
   }
   return { channels: ticked, exclude_channels: [] };
 }

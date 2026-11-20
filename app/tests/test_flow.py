@@ -418,9 +418,14 @@ def test_a_flow_run_records_the_transform_and_scale_stages(flow_run):
         assert line.startswith(f"  {label}: {t['cofactors'][j]:,.0f}  ("), line
         assert f"{100 * t['negative_fraction'][j]:.1f}% below 0" in line
     assert "Scale: every channel to mean 0 and SD 1, pooled over 2 files'" in "\n".join(log)
-    # auto's pass over the files moves the bar a step per file read, between select and
-    # transform, before the Scale stage's pass moves it on to scale; the bar never goes back
+    # the default channels' check moves the bar a step per file read up to select, auto's pass
+    # over the files a step per file between select and transform, before the Scale stage's pass
+    # moves it on to scale; the bar never goes back
     steps = progress_steps(settings, job)
+    assert [s for s in steps if s[1] == "channels"] == [
+        (0.035, "channels", "Channels: read file 1 of 2"),
+        (0.05, "channels", "Channels: read file 2 of 2"),
+    ]
     assert [s for s in steps if s[1] == "cofactor"] == [
         (0.065, "cofactor", "Cofactor: read file 1 of 2"),
         (0.08, "cofactor", "Cofactor: read file 2 of 2"),
@@ -434,7 +439,8 @@ def test_a_flow_run_records_the_transform_and_scale_stages(flow_run):
         (0.15, "scale", "Scaled the channels"),
     ]
     stages = [s[1] for s in steps]
-    assert stages.index("select") < stages.index("cofactor") < stages.index("transform")
+    assert stages.index("channels") < stages.index("select") < stages.index("cofactor")
+    assert stages.index("cofactor") < stages.index("transform")
     assert stages.index("transform") < stages.index("scale") < stages.index("nuggets")
     assert [s[0] for s in steps] == sorted(s[0] for s in steps)
 

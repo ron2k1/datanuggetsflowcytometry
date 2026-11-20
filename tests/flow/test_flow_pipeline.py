@@ -644,6 +644,7 @@ def test_stage_events_carry_the_cli_lines(tmp_path):
     run = cluster_stage(samples, [[6]], tmp_path, settings, read=read_202, on_event=events.append)
     assert [(e.stage, e.file) for e in events] == [
         ("gate", 1),
+        ("channels", 1),
         ("select", None),
         ("transform", None),
         ("scale", 1),
@@ -651,16 +652,17 @@ def test_stage_events_carry_the_cli_lines(tmp_path):
         ("nuggets", 1),
         ("cluster", None),
     ]
-    assert events[1].message == "\n" + run.selection.to_string(index=False)
-    assert events[2].message == (
+    assert (events[1].message, events[1].data) == ("", {"cells": 2_292})  # nothing to print
+    assert events[2].message == "\n" + run.selection.to_string(index=False)
+    assert events[3].message == (
         "\nTransform: arcsinh(x / 6000) of every clustered channel; cofactor 6000 as set"
     )
-    assert (events[3].message, events[3].data) == ("", {"cells": 2_292})
-    assert events[4].message.startswith(
+    assert (events[4].message, events[4].data) == ("", {"cells": 2_292})
+    assert events[5].message.startswith(
         "Scale: every channel to mean 0 and SD 1, pooled over 1 files' 2,292 cells\n"
     )
-    assert events[5].message == f"File 1, 202.fcs: 2,292 cells, {run.kept[0].dn.n_nuggets} nuggets"
-    assert events[6].message.startswith(
+    assert events[6].message == f"File 1, 202.fcs: 2,292 cells, {run.kept[0].dn.n_nuggets} nuggets"
+    assert events[7].message.startswith(
         "\nPercent of each file's kept cells in each cluster:\n"
         "(columns are file numbers; selection.csv names the files)\nfile_number"
     )

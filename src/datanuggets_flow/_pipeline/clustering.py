@@ -19,7 +19,7 @@ from datanuggets_flow._defaults import (
     FLOW_MAX_ITER,
     FLOW_METHOD,
     FLOW_NUM_INIT,
-    FLOW_SCATTER_PREFIXES,
+    FLOW_SCATTER_PATTERNS,
     FLOW_TIME_PATTERN,
     SEED,
 )
@@ -45,13 +45,15 @@ if TYPE_CHECKING:
 
 MIN_KEPT_EVENTS = 2  # create_dn needs two rows; a file keeping fewer is left out
 MIN_OCCUPIED_NUGGETS = 3  # the fewest nuggets in use that the clustering is run on
+# forward and side scatter's names, matched as the app's page matches them
+SCATTER = tuple(re.compile(p, re.IGNORECASE | re.ASCII) for p in FLOW_SCATTER_PATTERNS)
 
 
 def default_channels(pnn: Sequence[str]) -> list[str]:
     """The channels clustered when none are named, in pnn's order: every -A channel but forward
-    and side scatter (FLOW_SCATTER_PREFIXES), or every channel but those and Time when there are
-    fewer than two, as on instruments that record no areas."""
-    markers = [c for c in pnn if not c.startswith(FLOW_SCATTER_PREFIXES)]
+    and side scatter (SCATTER), or every channel but those and Time when there are fewer than two,
+    as on instruments that record no areas."""
+    markers = [c for c in pnn if not any(s.match(c) for s in SCATTER)]
     channels = [c for c in markers if c.endswith(FLOW_CHANNEL_SUFFIX)]
     if len(set(channels)) < 2:
         time = re.compile(FLOW_TIME_PATTERN, re.IGNORECASE | re.ASCII)  # as the app's page
@@ -132,6 +134,8 @@ def _each_file(
     channels: Sequence[str],
     settings: ClusterSettings,
     read: Reader,
+    *,
+    refuse: bool = True,
 ) -> Iterator[tuple[int, Mapping, np.ndarray | None, np.ndarray]]:
     """Each file's kept cells after the Transform stage, one file read at a time: its index, its
     sample, the cells' channels as arcsinh(x / cofactor) (as stored with cofactor 0), and their
@@ -139,7 +143,8 @@ def _each_file(
     populations alone keep too few cells isn't read, and comes with None for its cells; a file
     keeping fewer than MIN_KEPT_EVENTS once filtered is for the caller to leave out. The cofactor
     must be a number, or a tuple of one per channel: "auto" is refused, as cluster_stage resolves
-    it before this runs."""
+    it before this runs. A channel holding NaN or an infinite value is refused unless refuse is
+    off, for finite_channels to find."""
     filters = settings.filters()
     keeps = [pick_events(s["masks"], pops) for s, pops in zip(samples, chosen)]
     if not any(keep.sum() >= MIN_KEPT_EVENTS for keep in keeps):
@@ -163,7 +168,8 @@ def _each_file(
         rows, x = np.flatnonzero(keep), None
         if len(rows) >= least:
             x, rows = _kept_cells(s, rows, channels, settings.cofactor, read, filters)
-            _refuse_non_finite(s["path"].name, channels, x)
+            if refuse:
+                _refuse_non_finite(s["path"].name, channels, x)
         yield i, s, x, rows
 
 
@@ -178,6 +184,52 @@ def _refuse_non_finite(name: str, channels: Sequence[str], x: np.ndarray) -> Non
             f"the cells kept; leave {'it' if len(bad) == 1 else 'them'} out of the channels to "
             "cluster"
         )
+
+
+def finite_channels(
+    samples: Sequence[Mapping],
+    chosen: Sequence[Sequence[int]],
+    channels: Sequence[str],
+    labels: Sequence[str],
+    settings: ClusterSettings,
+    *,
+    read: Reader = read_fcs,
+    on_event: OnEvent | None = None,
+) -> tuple[list[str], list[str]]:
+    """The default channels and their labels less those holding NaN or an infinite value among
+    the cells kept in any file, as a processed file's label column can, with a DataNuggetWarning
+    naming them: the run chose them, so it leaves out what it can't cluster, where a channel it was
+    given by name is refused. One pass over the files' raw values, a "channels" event per file as
+    negative_tally's "cofactor" ones. Refused when fewer than two are left."""
+    raw = replace(settings, cofactor=0.0)  # NaN and infinity are so before any arcsinh
+    bad = np.zeros(len(channels), dtype=bool)
+    for i, _, x, rows in _each_file(samples, chosen, channels, raw, read, refuse=False):
+        if x is not None:
+            bad |= ~np.isfinite(x).all(axis=0)
+        if on_event:
+            nb = len(rows) if len(rows) >= MIN_KEPT_EVENTS else 0
+            on_event(StageEvent("channels", i + 1, len(samples), "", {"cells": nb}))
+    if not bad.any():
+        return list(channels), list(labels)
+    names = [c for c, b in zip(channels, bad) if b]
+    kept = [(c, label) for c, label, b in zip(channels, labels, bad) if not b]
+    one = len(names) == 1
+    what = (
+        f"{', '.join(names)} {'holds' if one else 'hold'} values that aren't numbers (NaN or "
+        "infinite) among the cells kept"
+    )
+    if len({c for c, _ in kept}) < 2:
+        raise FlowError(
+            f"{what}, which leaves fewer than two default channels; name the channels to cluster "
+            "with {param}",
+            "channels",
+        )
+    warnings.warn(
+        f"{what}, so {'it is' if one else 'they are'} left out of the default channels",
+        DataNuggetWarning,
+        stacklevel=2,
+    )
+    return [c for c, _ in kept], [label for _, label in kept]
 
 
 def _nothing_kept() -> FlowError:

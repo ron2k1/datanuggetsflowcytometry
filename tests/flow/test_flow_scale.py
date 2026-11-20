@@ -217,9 +217,12 @@ def test_the_run_scales_by_the_pooled_stats(scaled_run):
 def test_stage_events_name_the_transform_and_the_scale(scaled_run):
     """The run reports both stages, in order, between the selection and the nuggets. The Scale
     stage's pass over the files reports each file with nothing to print, so a backend can move
-    its bar and stop the run there, then the stage's lines."""
+    its bar and stop the run there, then the stage's lines; the default channels' check before
+    the selection reports each file the same way."""
     _, run, events, _, _ = scaled_run
     assert [(e.stage, e.file) for e in events] == [
+        ("channels", 1),
+        ("channels", 2),
         ("select", None),
         ("transform", None),
         ("scale", 1),
@@ -229,11 +232,10 @@ def test_stage_events_name_the_transform_and_the_scale(scaled_run):
         ("nuggets", 2),
         ("cluster", None),
     ]
-    transform, scale = events[1], events[4]
-    assert [(e.n_files, e.message, e.data) for e in events[2:4]] == [
-        (2, "", {"cells": 39_860}),
-        (2, "", {"cells": 2_292}),
-    ]
+    transform, scale = events[3], events[6]
+    counted = [(2, "", {"cells": 39_860}), (2, "", {"cells": 2_292})]
+    assert [(e.n_files, e.message, e.data) for e in events[4:6]] == counted
+    assert [(e.n_files, e.message, e.data) for e in events[:2]] == counted
     assert transform.message == (
         "\nTransform: arcsinh(x / 6000) of every clustered channel; cofactor 6000 as set"
     )

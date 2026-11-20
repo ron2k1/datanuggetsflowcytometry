@@ -1,6 +1,7 @@
 // Fixture mode only: turns an FCS file picked in this tab into the API's Upload shape, computed
 // from the file's own DATA segment, so the upload screen shows the real numbers of the real file.
 // Nothing leaves the browser.
+import { FCS_HEADER_RE } from '../config.js';
 import { pyStrip } from '../format.js';
 
 let seq = 0;
@@ -42,7 +43,7 @@ function fcsUpload(buf) {
   const bytes = new Uint8Array(buf);
   const ascii = (a, b) => String.fromCharCode(...bytes.subarray(a, b));
   const head = ascii(0, 58);
-  if (!/^FCS(2\.0|3\.0|3\.1)/.test(head)) throw refusal('unsupported_type', 'This is not an FCS 2.0, 3.0 or 3.1 file.');
+  if (!FCS_HEADER_RE.test(head)) throw refusal('unsupported_type', 'This is not an FCS 2.0, 3.0 or 3.1 file.');
   const t0 = parseInt(head.slice(10, 18), 10), t1 = parseInt(head.slice(18, 26), 10);
   const kw = keywords(bytes.subarray(t0, t1 + 1));
   const npar = parseInt(kw.par, 10) || 0, tot = parseInt(kw.tot, 10) || 0;

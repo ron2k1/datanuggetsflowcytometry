@@ -12,7 +12,7 @@ A flow cytometry experiment can produce millions of events across dozens of samp
 
 The package builds on [`datanuggets`](https://pypi.org/project/datanuggets/), a Python port of the R packages `datanugget` and `WCluster`. It offers a local web app, a command-line interface and a Python API.
 
-> **Research alpha (`0.1.0a4`).** This is an exploratory analysis tool. It isn't an automated cell-type identification system or a validated clinical analysis system. Its clusters are mathematical groupings, and they aren't confirmed biological populations. The API and analysis defaults may change.
+> **Research alpha (`0.1.0a5`).** This is an exploratory analysis tool. It isn't an automated cell-type identification system or a validated clinical analysis system. Its clusters are mathematical groupings, and they aren't confirmed biological populations. The API and analysis defaults may change.
 
 [Project page](https://ron2k1.github.io/datanuggetsflowcytometry/) · [App guide](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/app/running-locally.md) · [Command reference](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/cli.md) · [Python API](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/api.md) · [Methodology](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/methodology.md) · [Limitations](https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/limitations.md)
 
@@ -23,7 +23,7 @@ The package builds on [`datanuggets`](https://pypi.org/project/datanuggets/), a 
 With Docker installed, run:
 
 ```sh
-docker run --rm -p 127.0.0.1:8000:8000 -v datanuggets-data:/data ghcr.io/ron2k1/datanuggets-flow:0.1.0a4
+docker run --rm -p 127.0.0.1:8000:8000 -v datanuggets-data:/data ghcr.io/ron2k1/datanuggets-flow:0.1.0a5
 ```
 
 Open <http://127.0.0.1:8000> in your browser. The app lets you inspect candidate gates, choose which populations to include, run the clustering and explore the results with interactive plots.
@@ -45,7 +45,7 @@ The cluster step is where you set the number of clusters and how many nuggets ea
 The package requires Python 3.12 or newer and a platform that the underlying `datanuggets` package supports. Those are Windows x64, Apple silicon Macs running macOS 12 or newer, and Linux x86-64 or ARM64 with glibc 2.27 or newer. Install the pinned alpha:
 
 ```sh
-python -m pip install "datanuggets-flow==0.1.0a4"
+python -m pip install "datanuggets-flow==0.1.0a5"
 ```
 
 The package uses `datanuggets` for reduction and weighted clustering, `flowio` for FCS input, and pandas, matplotlib and scikit-learn for analysis and reporting.

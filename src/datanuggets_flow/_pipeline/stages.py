@@ -19,6 +19,7 @@ from datanuggets_flow._defaults import (
 )
 from datanuggets_flow._pipeline.clustering import (
     cluster_nuggets,
+    finite_channels,
     make_nuggets,
     negative_tally,
     pooled_scaling,
@@ -146,8 +147,9 @@ def cluster_stage(
     on_event: OnEvent | None = None,
     figure: Callable[..., Figure] | None = None,
 ) -> RunResult:
-    """The clustering stage in the folder out, which must exist: the channels resolved,
-    selection.csv, the cofactor resolved once by resolve_cofactor before any arcsinh
+    """The clustering stage in the folder out, which must exist: the channels resolved (default
+    ones less any holding NaN or an infinite value, by finite_channels, a pass over the raw
+    values), selection.csv, the cofactor resolved once by resolve_cofactor before any arcsinh
     (settings.cofactor "auto" picks one per channel from negative_tally, a pass over the raw
     values of the cells the run clusters; a number is used as set for every channel, with no such
     pass) and given to every step after as Cofactor.applied, the Transform stage (arcsinh(x / c)
@@ -157,7 +159,8 @@ def cluster_stage(
     or the hierarchical tree), the tables, the t-SNE unless
     settings.tsne is off, the viewer's tables (flow.outputs.viewer_tables), and the figures,
     drawn on figure (see flow.figures). The tables give channel values in the transform's units.
-    Events: "select" with selection.csv's table, "cofactor" per file read (with nothing to print)
+    Events: "channels" per file read (with nothing to print) while the default channels are
+    checked, "select" with selection.csv's table, "cofactor" per file read (nothing to print)
     while auto tallies, "transform" with what it does and the cofactor used and why, "scale" per
     file read (with nothing to print) while the Scale stage pools its stats, then "scale" with
     what it does, "nuggets" per kept file, "cluster" with each cluster's percent and the k used.
@@ -182,6 +185,10 @@ def cluster_stage(
             "groups",
         )
     channels, labels = resolve_channels(samples, settings)
+    if settings.channels is None:  # the run chose them, so it leaves out what it can't cluster
+        channels, labels = finite_channels(
+            samples, chosen, channels, labels, settings, read=read, on_event=on_event
+        )
     warn_stain_differences(samples, channels)
     selection = selection_table(samples, chosen)
     files = []

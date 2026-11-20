@@ -6,7 +6,7 @@
 
 A run does everything at once, or in two stages: `--gates-only` gates the files and saves the gates, and `--from-gates` chooses populations from them and clusters, as [Staged runs](#staged-runs) describes.
 
-`python -m pip install "datanuggets-flow==0.1.0a4"` installs the command with flowio, matplotlib, pandas and scikit-learn. In a clone, `uv sync` installs them and `uv run datanuggets-flow` runs it. The [quickstart](quickstart.md#a-first-datanuggets-flow-run) walks through a first run.
+`python -m pip install "datanuggets-flow==0.1.0a5"` installs the command with flowio, matplotlib, pandas and scikit-learn. In a clone, `uv sync` installs them and `uv run datanuggets-flow` runs it. The [quickstart](quickstart.md#a-first-datanuggets-flow-run) walks through a first run.
 
 > **Experimental workflow.** Each run creates a fresh folder under `outputs/` by default. Existing output paths are refused, and unfinished runs retain an `INCOMPLETE.txt` marker. Choose at least two distinct fluorescence channels and enough retained cells to make at least three occupied nuggets.
 
@@ -45,7 +45,7 @@ Each path is an FCS file or a folder of them. A folder gives its files whose suf
 
 Files and folders can be mixed. The files are numbered from 1 in the order of the arguments, with each folder's files in name order. Name order is string order, so `10.fcs` comes before `9.fcs`. That number is what per-file thresholds, `--pops` entries and the `N` in `nuggets_N.csv` and `events_N.csv` follow. The run prints `File N, name` for every file, and `selection.csv` records the numbering.
 
-flowio reads each file's events with `as_array(preprocess=True)`, as the file stores them. Channels are found by their `$PnN` names. The gate takes two channels, `--fsc` across and `--ssc` up. One left out is the first file's forward scatter for `--fsc`, side scatter for `--ssc`: its first channel starting with `FS` (or `SS`) that ends in `-A`, else its first starting so, such as a Navios's `FS INT`, else the first of its default clustering channels, as on a mass cytometer, which records no scatter. The two are never one channel, and every file must have both. The channels to cluster are taken from the first file, and every file must have them too.
+flowio reads each file's events with `as_array(preprocess=True)`, as the file stores them. Channels are found by their `$PnN` names. The gate takes two channels, `--fsc` across and `--ssc` up. One left out is the first file's forward scatter for `--fsc`, side scatter for `--ssc`: its first forward (or side) scatter channel that ends in `-A`, else its first scatter channel, such as a Navios's `FS INT`, else the first of its default clustering channels, as on a mass cytometer, which records no scatter. The two are never one channel, and every file must have both. The channels to cluster are taken from the first file, and every file must have them too.
 
 A `--from-gates` run takes no paths. It reads the files its gate folder records, at the paths they were gated from.
 
@@ -65,7 +65,7 @@ A `--from-gates` run takes no paths. It reads the files its gate folder records,
 | `--t22 T22` | `0.5` | Every other peak's density threshold, in every file |
 | `--n-row N_ROW`, `--n-col N_COL` | `11`, `11` | Rows and columns of the window the finder's local maxima are found in, 1 to 100 each |
 | `--pops POPS` | ask at the prompt | Populations to keep, in the prompt's grammar: one entry for every file, or one per file separated by `;` |
-| `--channels CHANNELS` | every `-A` channel but scatter | Comma-separated `$PnN` names. Give at least two distinct channels; clustering and PCA need two. The default takes names in the first file ending in `-A` that do not start with `FS` or `SS`, the scatter prefixes, or, when it has fewer than two, every name but scatter and Time. See [Files from other instruments](#files-from-other-instruments) |
+| `--channels CHANNELS` | every `-A` channel but scatter | Comma-separated `$PnN` names. Give at least two distinct channels; clustering and PCA need two. The default takes names in the first file ending in `-A` that aren't scatter, or, when it has fewer than two, every name but scatter and Time. A default channel holding NaN or an infinite value among the kept cells is left out with a warning, and one named here is refused. See [Files from other instruments](#files-from-other-instruments) |
 | `--exclude-channels EXCLUDE_CHANNELS` | none | Comma-separated `$PnN` names to leave out of the default channels, such as a viability dye. Each must be a channel of the first file. Can't be combined with `--channels` |
 | `--cofactor COFACTOR` | `auto` | The Transform stage: fluorescence is clustered as `arcsinh(x / cofactor)`, or as stored with `0`. `auto` picks one per channel from the spread of its cells below 0, at least 150; see [Transform and Scale](#transform-and-scale). A number applies to every channel, and `0` keeps the channels linear. A negative, NaN or infinite value is refused |
 | `--no-standardize` | off | Skip the Scale stage, which by default scales every clustered channel to mean 0 and SD 1 over all clustered files' kept events. See [Transform and Scale](#transform-and-scale) |
@@ -89,7 +89,7 @@ A `--from-gates` run takes no paths. It reads the files its gate folder records,
 
 A flag left out takes the default above, which `--help` prints too. `--fsc` to `--n-col` set the gate stage, so `--from-gates` refuses them. `--pops` to `--cells-per-file` set the clustering stage, so `--gates-only` refuses them. `--tsne-perplexity` and `--tsne-seed` are refused with `--no-tsne`, which would ignore them, and `--num-init` and `--max-iter` are refused with `--method tree`, for the same reason.
 
-On the files of the Zenodo record the default channels are the 32 unmixed `FJComp-...-A` channels. `SSC-B-A` starts with `SS`, so it's left out. A channel name with a space needs quotes, as in `--channels "FJComp-BV510-A,FJComp-Spark Blue-A"`.
+On the files of the Zenodo record the default channels are the 32 unmixed `FJComp-...-A` channels. `SSC-B-A` is side scatter, so it's left out. A channel name with a space needs quotes, as in `--channels "FJComp-BV510-A,FJComp-Spark Blue-A"`.
 
 #### Per-file thresholds
 
@@ -368,13 +368,14 @@ If a run fails or is cancelled after creating its folder, partial figures and ta
 
 ### Spillover
 
-Events are clustered as stored, uncompensated. When a file's `$SPILLOVER` or `$SPILL` keyword holds a matrix with any entry more than 0.001 from the identity, the run prints `warning: NAME has a compensation matrix, but its events are clustered as stored, uncompensated` and goes on. It prints each time the file is read: when it's gated, and on each pass the clustering stage makes over its events, up to three (the auto cofactor's tally, the Scale stage and the nuggets). A gate folder doesn't record the matrix, so `--from-gates` warns again when it reads the file. Spectral files are unmixed already. The four files of the Zenodo record tried here, `154`, `199`, `202` and `223`, carry no spillover keyword, so this warning hasn't been seen on real data.
+Events are clustered as stored, uncompensated. When a file's `$SPILLOVER` or `$SPILL` keyword holds a matrix with any entry more than 0.001 from the identity, the run prints `warning: NAME has a compensation matrix, but its events are clustered as stored, uncompensated` and goes on. It prints each time the file is read: when it's gated, and on each pass the clustering stage makes over its events, up to four (the default channels' check for values that aren't numbers, the auto cofactor's tally, the Scale stage and the nuggets). A gate folder doesn't record the matrix, so `--from-gates` warns again when it reads the file. Spectral files are unmixed already. The four files of the Zenodo record tried here, `154`, `199`, `202` and `223`, carry no spillover keyword, so this warning hasn't been seen on real data.
 
 ### Files from other instruments
 
 The defaults fit a cytometer that records areas (`-A`) and forward and side scatter, as the PBMC demo's Cytek Aurora does. Files from other instruments run too, with these differences.
 
-- Scatter by prefix. A channel starting with `FS` or `SS` is scatter, so a Beckman Navios's `FS INT` and `SS INT` count as well as `FSC-A` and `SSC-A`. Scatter is gated on and never clustered by default.
+- Scatter by name. A channel named `FS` or `SS` followed by `C`, a space, a dash, an underscore or nothing, in any case is scatter: `FSC-A`, `ssc-a`, a spectral cytometer's `SSC-B-A`, and a Beckman Navios's `FS INT` and `SS INT`. A marker named from those letters, such as `SSEA4-A`, isn't. Scatter is gated on and never clustered by default.
+- A processed file's label column. A default channel holding NaN or an infinite value among the kept cells, as a label column can, is left out with a `warning:` line. A channel named with `--channels` is refused. Other bookkeeping columns, such as event numbers, hold numbers and stay in the defaults: list the markers with `--channels`.
 - Heights only, or no areas. When the first file has fewer than two channels ending in `-A` other than scatter, as a FACSCalibur's FCS 2.0 file or a mass cytometer's does, the default channels are every channel but Time and scatter. Instrument parameters such as a mass cytometer's `Event_length` are among them. Leave those out with `--exclude-channels`, or list the markers with `--channels`.
 - No `FSC-A` or `SSC-A`. The gate takes the first file's other scatter channels: `FSC-H` and `SSC-H` on a heights-only file, `FS INT` and `SS INT` on a Navios file. A file with no scatter, such as a mass cytometer's, is gated on its first two default channels, which are rarely the ones to gate cells on: name two with `--fsc` and `--ssc`, such as the DNA channels. The finder's cutoffs were set on scatter ([limitations](limitations.md#flow-cytometry)), so check the gates it draws.
 - Empty populations under the reference rule. On public files from an Aurora and an Attune, `--disc reference` drew areas holding no events, since it mirrors each peak's area across the diagonal. The gate lines say so, and `--disc peak` centres each area on its peak.

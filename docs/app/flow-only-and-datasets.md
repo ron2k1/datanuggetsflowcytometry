@@ -55,9 +55,9 @@ on the PBMC demo: load it, gate it, run it, then read the plot, the files and th
 
 A dataset is the FCS uploads in one workspace whose colour channels are the same set. The colour
 channels are the package's default clustering channels (`pipeline.default_channels`): the `$PnN`
-names that end in `-A` and do not start with `FS` or `SS` (`FLOW_CHANNEL_SUFFIX`,
-`FLOW_SCATTER_PREFIXES`), or, in a file with fewer than two such names, every name but those and
-Time (`FLOW_TIME_PATTERN`), as on a mass cytometer. Order does not matter. Beside two `-A` colour
+names that end in `-A` and are not scatter (`FLOW_CHANNEL_SUFFIX`, `FLOW_SCATTER_PATTERNS`: FS
+or SS followed by C, a space, a dash, an underscore or nothing, in any case), or, in a file with
+fewer than two such names, every name but those and Time (`FLOW_TIME_PATTERN`), as on a mass cytometer. Order does not matter. Beside two `-A` colour
 channels, Time and `-H`/`-W` channels never count. Stain names (`$PnS`) do not define a dataset.
 
 This is stricter than the package, which only needs every file to contain the first file's
@@ -79,7 +79,7 @@ uploads, fixture uploads and files read in the tab. Each dataset has:
   be spelled two ways by two operators, and the page cannot tell that from a different stain.
 
 The `-A` suffix is mirrored as `FLOW_CHANNEL_SUFFIX` in `shared/config.js` and pinned to the
-package by a Python test, as the scatter prefixes and the time pattern already are. The server's
+package by a Python test, as the scatter patterns and the time pattern already are. The server's
 `colour_channels` calls the package's `default_channels` itself.
 
 ### The rule (the server)

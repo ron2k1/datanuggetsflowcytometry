@@ -1,5 +1,23 @@
 # Release notes
 
+## 0.1.0a5
+
+This release fixes three of the limits listed for 0.1.0a4: scatter names, a label column in the default channels, and the app's upload check. It's on PyPI as `datanuggets-flow==0.1.0a5` and is the app image `ghcr.io/ron2k1/datanuggets-flow:0.1.0a5`. The `datanuggets` library and the dependencies are those of 0.1.0a3.
+
+### Changed
+
+- Scatter is a channel named `FS` or `SS` followed by `C`, a space, a dash, an underscore or nothing, in any case. So `FSC-A`, a spectral cytometer's `SSC-B-A`, a Navios's `FS INT` and a lowercase `fsc-a` are scatter. A marker named from those letters, such as `SSEA4-A`, isn't, and names such as `FS1-A` or `FSPeak-A` are now marker channels too.
+- Files with lowercase scatter or a marker whose name starts with `SS` get different default channels than under 0.1.0a4. Clustering a 0.1.0a4 gate folder with `--from-gates` takes the new defaults unless `--channels` names the channels.
+- A default channel holding NaN or an infinite value among the kept cells, as a processed file's label column can, is left out with a warning. When fewer than two default channels are left, the run stops and asks for `--channels`. A channel named with `--channels` is still refused.
+- That check reads each kept file once before the selection, so a run on the default channels makes one more pass over the files.
+
+### App
+
+- The page reads an upload's first six bytes and refuses a file without an FCS 2.0, 3.0 or 3.1 header before sending it. The server still refuses such a file when the browser can't read those bytes.
+- The progress bar moves while a run checks the default channels, and Cancel stops the run there.
+- The Cluster form sends no channel list when the ticked channels are the defaults, with or without a viability dye left out, so the package's default rule applies in both cases.
+- Datasets group uploads by the new scatter rule, so lowercase scatter or an `SSEA4` marker can put a file in a different dataset than under 0.1.0a4.
+
 ## 0.1.0a4
 
 This release runs FCS files from instruments other than the PBMC demo's. It's on PyPI as `datanuggets-flow==0.1.0a4` and is the app image `ghcr.io/ron2k1/datanuggets-flow:0.1.0a4`. The `datanuggets` library and the dependencies are those of 0.1.0a3.

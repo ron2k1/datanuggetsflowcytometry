@@ -224,6 +224,11 @@ cells_per_file: int = FLOW_CELLS_PER_FILE  # 2000, in _defaults; 0 = no cells.cs
 
 - `state.write_run` needs no new keys for these tables (settings carry the new fields). The
   `cluster` StageEvent data gains `"k": pool.k`.
+- With no channels sent, the stage first reads every kept file once to check the default
+  channels for values that aren't numbers, and sends a `"channels"` event per file read,
+  with `file` set, an empty message and data `{"cells": n}`; the worker moves the bar from
+  `PROGRESS_START` to `FLOW_STEPS["select"]` on them with the progress message `Channels:
+  read file i of n`, checks for a cancel, and logs nothing. Channels sent by name send none.
 - The Transform and Scale stages ([methodology](../methodology.md#transform-and-scale)) run
   between `select` and `nuggets`, each with its StageEvent (`"transform"`, `"scale"`). With
   cofactor `"auto"`, `negative_tally` first reads every kept file once and sends a `"cofactor"`
@@ -234,7 +239,8 @@ cells_per_file: int = FLOW_CELLS_PER_FILE  # 2000, in _defaults; 0 = no cells.cs
   read, with `file` set, an empty message and data `{"cells": n}`; the worker moves the bar from
   `FLOW_STEPS["transform"]` to `FLOW_STEPS["scale"]` on them and checks for a cancel, and logs
   nothing. The stage's own `"scale"` event (`file` None) follows. The events come in the order
-  select, cofactor per file, transform, scale per file, scale, nuggets per file, cluster.
+  channels per file, select, cofactor per file, transform, scale per file, scale, nuggets per
+  file, cluster.
   `state.write_run(..., scaling=result.pool.scaling, cofactor=result.cofactor, pool=result.pool)`
   records them in run.json as `transform` and `standardize`, and the Cluster stage as
   `clustering` (below) (`{"mean", "sd", "ddof": 0, "cells", "skew"}` or
@@ -403,7 +409,9 @@ name, since some instruments name theirs otherwise (a FACSCalibur's `.B08`): the
 with `FCS2.0`, `FCS3.0` or `FCS3.1`, else 415 `unsupported_type` ("This is not an FCS 2.0, 3.0
 or 3.1 file."), and one the reader cannot parse is 422 `unreadable_file`. The name is kept, made
 safe. A name the system keeps for itself, such as `NUL` on Windows, is 422 `invalid_setting`
-(param `file`) and the upload is removed.
+(param `file`) and the upload is removed. The page reads a file's first six bytes before
+sending it and refuses one without the header itself, so such a file isn't sent; the server's
+415 stands for a file whose first bytes the browser cannot read, and for other clients.
 Trial: `Content-Length` required (411), size checked while streaming (413, partial file
 deleted). -> 201 `Upload`:
 ```json
@@ -424,9 +432,9 @@ readers treat a missing key as unknown.
 
 Datasets. An FCS upload's colour channels are the `$PnN` names in its `columns` that the
 package's `pipeline.default_channels` clusters, compared exactly as stored: those that end in
-`-A` and do not start with `FS` or `SS`, or, when there are fewer than two, every channel but
-scatter and Time (flow-only-and-datasets.md part 2). Their order and the stains (`$PnS`) do not
-count. A channel with no `$PnN` is named `P` and its number. The uploads whose colour channels
+`-A` and are not scatter (FS or SS followed by C, a space, a dash, an underscore or nothing,
+in any case), or, when there are fewer than two, every channel but scatter and Time
+(flow-only-and-datasets.md part 2). Their order and the stains (`$PnS`) do not count. A channel with no `$PnN` is named `P` and its number. The uploads whose colour channels
 are the same set are one dataset, and a gate takes files from one dataset (3.4). The page groups
 uploads into datasets (`shared/datasets.js`); the server keeps only the names given to them.
 
@@ -481,7 +489,7 @@ job (param `channels`).
              "gates": "/api/v1/flow/gates/g1/figures/gates.png"}}
 ```
 `files` is `[]` until done. `color` from `population_colors`. `default_channels` = every `-A`
-channel but scatter (`FS`, `SS`), or every channel but those and Time when fewer than two (the package's
+channel but scatter (the package's `FLOW_SCATTER_PATTERNS`), or every channel but those and Time when fewer than two (the package's
 rule). `settings.fsc` and `settings.ssc` name the two channels the gate took, set or settled on
 file 1 by the package's `gate_channels`. `GET /flow/gates/{gid}/figures/{local_maxima.png|gates.png}` -> image/png.
 `DELETE /flow/gates/{gid}` -> 204 (409 while the gate's job is running, a run from it is
