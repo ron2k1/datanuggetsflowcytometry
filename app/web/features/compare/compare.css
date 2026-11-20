@@ -1,0 +1,16 @@
+/* Compare: two charts side by side on the theme's plot background. */
+.cmp-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.chart { position: relative; height: 320px; background: var(--plot-bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.chart.tall { height: 420px; }
+.chart > div { position: absolute; inset: 0; }
+.chart-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 8px; }
+.chart-head h3 { margin: 0; }
+
+@media (max-width: 1080px) {
+  .cmp-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .chart { height: 280px; }
+  .chart.tall { height: 380px; }
+}

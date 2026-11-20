@@ -1,0 +1,50 @@
+/* A cluster's box plots, in their own tab. The page is a size container, so its columns follow
+   the editor's width: from 960 px, the markers' tall chart on the left and the counts over the
+   one-marker split on the right; below that, one column. */
+.cp-wrap { container-type: inline-size; min-height: 100%; background: var(--panel); }
+.cp-page { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.cp-page > .cp-head { grid-column: 1 / -1; }
+@container (min-width: 960px) {
+  /* The markers' chart spans both right rows; the last row's 1fr takes its extra height, so the
+     one-marker chart sits right under the counts instead of below a gap. */
+  .cp-page { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto 1fr; grid-template-areas: "head head" "markers counts" "markers one"; }
+  .cp-page > .cp-head { grid-area: head; }
+  .cp-page > .cp-markers { grid-area: markers; border-right: 1px solid var(--line-soft); border-bottom: 0; }
+  .cp-page > .cp-counts { grid-area: counts; }
+  .cp-page > .cp-one { grid-area: one; border-bottom: 0; }
+}
+.cp-page > .doc { grid-column: 1 / -1; }
+.cp-tools { display: flex; align-items: center; gap: 8px; flex: none; }
+.cp-tools select { width: auto; height: 28px; font-size: 12.5px; padding: 0 8px; }
+.cp-head { display: flex; align-items: center; gap: 10px; padding: 12px 20px 10px; border-bottom: 1px solid var(--line-soft); position: sticky; top: 0; z-index: 2; background: var(--panel); }
+.cp-head .sw { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.cp-title { flex: 1; min-width: 0; }
+.cp-title h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.cp-sub { font: 11.5px var(--mono); color: var(--fg-3); margin-top: 3px; }
+.cp-sec { padding: 12px 20px 16px; border-bottom: 1px solid var(--line-soft); }
+.cp-sec:last-child { border-bottom: 0; }
+.cp-sec h4 { margin: 0 0 8px; font: 600 11px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--fg-3); display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 24px; }
+.cp-sec h4 select { width: auto; max-width: 58%; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 12px; height: 26px; padding: 0 6px; }
+/* clip, not hidden: hidden would make the card a scroll container and pin .cp-read inside it. */
+.cp-chart { background: var(--plot-bg); border: 1px solid var(--line); border-radius: 8px; overflow: clip; }
+/* Three lines held open, so hovering from one box to the next does not move the page under it.
+   Sticky: the markers' chart is taller than the window, and its readout stays at the window's foot. */
+.cp-read { position: sticky; bottom: 0; z-index: 1; background: var(--plot-bg); min-height: calc(3 * 1.45em + 13px); padding: 6px 10px 7px; border-top: 1px solid var(--line-soft); font: 11px/1.45 var(--mono); color: var(--plot-fg-2); white-space: pre-line; }
+/* Each swatch wraps with its label, so a narrow column never strands one from the other. */
+.cp-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 0 0 6px; font-size: 11.5px; color: var(--fg-2); }
+.cp-key .ki { display: inline-flex; align-items: center; gap: 6px; }
+.cp-key .kd { width: 18px; height: 10px; border: 1.4px solid var(--plot-fg-3); border-radius: 2px; flex: none; }
+.cp-key .kd.hollow { background: transparent; }
+/* A box chart's numbers. The numbers scroll sideways when the column is narrower than its
+   columns; the name column stays put (sticky, so it needs an opaque background) and is cut short. */
+.cp-table { overflow-x: auto; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.cp-table table { width: 100%; border-collapse: collapse; font: 10px/1.35 var(--mono); font-variant-numeric: tabular-nums; font-variant-ligatures: none; color: var(--fg-2); }
+.cp-table th, .cp-table td { padding: 3px 6px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line-soft); }
+.cp-table tbody tr:last-child > * { border-bottom: 0; }
+.cp-table thead th { font: 600 10px/1.25 var(--sans); color: var(--fg-3); white-space: normal; vertical-align: bottom; }
+.cp-table tr > :first-child { position: sticky; left: 0; z-index: 1; background: var(--panel); box-shadow: 1px 0 0 var(--line-soft); }
+.cp-table th[scope="row"] { text-align: left; font-weight: 400; color: var(--fg); max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.cp-chart.clickable .main-svg { cursor: pointer; }
+.cp-chart .fallback { padding: 16px; color: var(--plot-fg-2); text-align: center; }
+.cp-sec .note { font-size: 11.5px; margin-top: 6px; line-height: 1.45; }
+.cp-sec .note:empty { display: none; }

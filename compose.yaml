@@ -1,0 +1,29 @@
+# Example: build this checkout and run it on this computer, with its files kept in a named volume.
+# To run a published release instead, see docs/app/running-locally.md.
+#
+#   docker compose up --build            # http://127.0.0.1:8000
+#   DN_MODE=trial docker compose up      # the hosted-trial behaviour (caps, expiry), for testing
+#   docker compose down                  # stops it; the volume and your files stay
+#   docker compose down --volumes        # also deletes every upload and run
+#
+# Trial mode keeps its workspaces in /data/trial and empties that folder each time it starts.
+# Local mode's files are in /data/ws/local, so a trial start on this volume leaves them alone.
+#
+# The port is published on 127.0.0.1 only, so other machines on the network cannot reach it.
+services:
+  app:
+    build:
+      context: .
+    image: datanuggets-flow
+    ports:
+      - "127.0.0.1:${PORT:-8000}:8000"
+    environment:
+      DN_MODE: ${DN_MODE:-local}
+      DN_COOKIE_SECURE: ${DN_COOKIE_SECURE:-0}
+    volumes:
+      - datanuggets-data:/data
+    restart: unless-stopped
+
+volumes:
+  datanuggets-data:
+    name: datanuggets-data

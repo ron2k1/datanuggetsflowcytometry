@@ -1,0 +1,32 @@
+# The build context is the repository root, and everything in it is left out except the paths
+# the Dockerfile copies, so local data, environments, caches and development files never reach a
+# build. A path the Dockerfile copies must be let in here, or the build stops at that COPY.
+*
+!pyproject.toml
+!README.md
+!LICENSE
+!THIRD_PARTY.md
+!src/
+!app/pyproject.toml
+!app/uv.lock
+!app/demo/
+!app/scripts/fetch_demos.py
+!app/scripts/list_licenses.py
+!app/server/
+!app/web/
+
+# Inside what is let in: the page's offline fixtures and the tools that build them are for
+# development only, so the image never serves them. Tests, caches and data files stay out too.
+# The PBMC FCS files are fetched and sha256-checked by the build, so local copies stay out.
+app/web/fixtures
+app/web/tools
+**/tests
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/*.egg-info
+**/*.fcs
+**/*.npz
+app/demo/data/*.part

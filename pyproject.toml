@@ -1,0 +1,100 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "datanuggets-flow"
+version = "0.1.0a3"
+description = "Clusters flow cytometry events across FCS files with data nuggets."
+readme = "README.md"
+requires-python = ">=3.12"
+# PEP 639. The sdist also ships CC-BY-4.0 flow test data (tests/fixtures/flow), which the wheel
+# leaves out. Both archives share this metadata, so the expression covers the sdist, and
+# THIRD_PARTY.md says which files carry which license.
+license = "GPL-2.0-only AND CC-BY-4.0"
+license-files = ["LICENSE", "THIRD_PARTY.md"]
+authors = [{ name = "Ronil Basu" }]
+keywords = ["flow cytometry", "FCS", "gating", "data nuggets", "weighted clustering"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "datanuggets>=0.1.0a3,<0.2",
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "flowio>=1.4,<1.5",
+    "matplotlib>=3.9",
+    "pandas>=2.2",
+    "scikit-learn>=1.5",
+]
+
+[project.urls]
+Source = "https://github.com/ron2k1/datanuggetsflowcytometry"
+Documentation = "https://github.com/ron2k1/datanuggetsflowcytometry/blob/main/docs/README.md"
+Issues = "https://github.com/ron2k1/datanuggetsflowcytometry/issues"
+
+[project.scripts]
+datanuggets-flow = "datanuggets_flow.pick:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-xdist>=3.6",
+    "ruff>=0.6",
+    # the metadata workbook Cabrera's script reads, for the flow benchmark
+    "openpyxl>=3.1",
+]
+
+[tool.uv]
+# The exact hatchling that uv build, and so package.yml and release.yml, builds the archives
+# with. app/pyproject.toml pins the same version for the image. Bump it on purpose.
+build-constraint-dependencies = ["hatchling==1.32.4"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/datanuggets_flow"]
+
+# An allowlist: hatchling reads only the root .gitignore, so a folder that ignores itself through
+# its own would otherwise ship. scripts/check_dist.py holds the same list and checks the build.
+# tests/scripts tests that checker, which isn't shipped.
+[tool.hatch.build.targets.sdist]
+only-include = [
+    "src/datanuggets_flow", "tests", "LICENSE", "THIRD_PARTY.md", "README.md", "pyproject.toml",
+    "docs/README.md",
+    "docs/quickstart.md",
+    "docs/api.md",
+    "docs/cli.md",
+    "docs/limitations.md",
+    "docs/methodology.md",
+    "docs/reproducibility.md",
+    "docs/releases.md",
+]
+exclude = ["tests/scripts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+# tests/*: a helper module beside its tests, which they import by its bare name, is first-party
+src = ["src", "tests", "tests/*", "scripts", "benchmarks"]
+extend-exclude = [
+    "app",  # the web app, linted with its own config: ruff check run inside app/
+    "docs",  # prose with illustrative snippets, not sources
+    "README.md",  # the same: ruff formats Python blocks in Markdown and would reshape the example
+    # Cabrera's code word for word, kept as he wrote it
+    "benchmarks/flow/cabrera_reference.py",
+    "benchmarks/flow/run_cabrera.py",
+]

@@ -1,0 +1,55 @@
+/* A job tab: heading and status badge, progress while it runs, the next step, its results (a
+   gate's populations and figures, or a run's k), the log, and its details beside. */
+.logdoc { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 10px 0; font: 12px/1.65 var(--mono); overflow: auto; max-height: 50vh; }
+.job { max-width: 1180px; }
+.job .strong { font-weight: 600; color: var(--fg); }
+.job-grid { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 22px; align-items: start; }
+.job-main > * + * { margin-top: 14px; }
+.job-main > .links:empty, .job-main > div:empty { display: none; }
+.job-aside { position: sticky; top: 0; }
+@media (max-width: 1000px) { .job-grid { grid-template-columns: minmax(0, 1fr); } .job-aside { position: static; } }
+
+/* The status badge: a dot and the word, tinted by status; it pulses while the job runs. */
+.badge { display: inline-flex; align-items: center; gap: 6px; font: 600 11px var(--mono); letter-spacing: .05em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--fg-2); background: var(--panel); }
+.badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.badge.running, .badge.queued { color: var(--info); border-color: color-mix(in srgb, var(--info) 45%, transparent); background: color-mix(in srgb, var(--info) 10%, transparent); }
+.badge.done { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.badge.failed { color: var(--err); border-color: color-mix(in srgb, var(--err) 45%, transparent); background: color-mix(in srgb, var(--err) 10%, transparent); }
+.badge.cancelled { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.badge.running::before { animation: job-pulse 1.2s ease-in-out infinite; }
+@keyframes job-pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .badge.running::before { animation: none; } }
+
+.job-live-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; font-size: 12.5px; }
+.job-pct { font: 600 13px var(--mono); color: var(--info); }
+.job-err { border-color: color-mix(in srgb, var(--err) 50%, transparent); background: color-mix(in srgb, var(--err) 8%, transparent); color: var(--err); }
+.job-next { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; border-left-width: 3px; padding: 10px 12px 10px 14px; font-size: 13px; }
+.job-next b { color: var(--accent); }
+
+/* A gate's files: name, events and a peak chip over a table of populations. */
+.job-files { display: grid; gap: 12px; }
+.job-file { overflow: hidden; }
+.job-file-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.job .fname { font-weight: 600; color: var(--fg); font-size: 13.5px; }
+.job .chip { font: 600 11px var(--mono); padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.tbl-wrap.flat { border: 0; border-radius: 0; }
+.job-file .tbl td { background: var(--bg); }
+.share { display: flex; align-items: center; gap: 10px; }
+.share-bar { width: 140px; height: 8px; border-radius: 4px; background: var(--raise); overflow: hidden; flex: none; }
+.share-bar i { display: block; height: 100%; }
+.share b { font: 600 12px var(--mono); color: var(--fg); min-width: 48px; }
+
+/* A gate's figures as thumbnails; each opens its figure tab. */
+.job-figs { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.job-fig { display: block; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow: hidden; cursor: pointer; text-align: left; color: inherit; font: inherit; }
+.job-fig:hover, .job-fig:focus-visible { border-color: var(--accent-line); }
+.job-fig img { display: block; width: 100%; height: 210px; object-fit: contain; background: var(--paper); }
+.job-fig > span { display: block; padding: 7px 10px; font-size: 12px; border-top: 1px solid var(--line); }
+
+/* A run's k, large, beside its title and the way to another k. */
+.job-run { display: flex; gap: 18px; align-items: center; }
+.job-k { display: grid; justify-items: center; padding: 6px 16px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); flex: none; }
+.job-k b { font: 700 28px/1.1 var(--mono); }
+.job-k span { font-size: 11px; font-weight: 600; }
+.job-run-text { min-width: 0; }
+.job-log { margin-top: 18px; }

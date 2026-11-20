@@ -1,0 +1,14 @@
+/* Element defaults every screen relies on: box model, the body font, links, focus, icons. */
+* { box-sizing: border-box; }
+/* v3 review F5: author display rules must never beat the hidden attribute. */
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 13px/1.45 var(--sans); overflow: hidden; -webkit-font-smoothing: antialiased; }
+* { font-variant-ligatures: none !important; }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+a { color: var(--info); }
+:focus-visible { outline: 2px solid var(--accent-line); outline-offset: -2px; }
+.mono { font-family: var(--mono); }
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+svg.i .f { fill: currentColor; stroke: none; }

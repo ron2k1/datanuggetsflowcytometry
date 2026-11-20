@@ -1,0 +1,47 @@
+/* Theme tokens. Light "paper" is the default whatever the OS says; dark is only ever chosen with
+   the theme toggle, which sets data-theme="dark" (see shared/theme-boot.js). */
+:root {
+  color-scheme: light;
+  --bg: #ffffff; --panel: #f6f5f2; --chrome: #eeede8; --raise: #e8e7e1; --hover: #e2e1da;
+  --line: #d8d6ce; --line-soft: #e7e5df;
+  --fg: #16181d; --fg-2: #4a4f5c; --fg-3: #6e737f;
+  --accent: #d4500f; --accent-fg: #ffffff; --accent-soft: rgba(212,80,15,.1); --accent-line: rgba(212,80,15,.45);
+  --ok: #0f8a5f; --info: #2563eb; --warn: #a86500; --err: #c62828; --rose: #c2477a;
+  --pane-x: #e4def6; --pane-y: #f5dbe4; --pane-z: #e8ebcf;
+  --thumb-x: #b3a6e6; --thumb-y: #e8a5bd; --thumb-z: #c3ca86; --thumb-off: #dcdad3;
+  --paper: #ffffff;
+  /* Plots (Plotly reads these through shared/plot-base.js) and their overlay toolbar. */
+  --plot-bg: #ffffff; --plot-hover: #ffffff;
+  --plot-fg: #1d2129; --plot-fg-2: #4a5060; --plot-fg-3: #6b7280; --plot-line: #c7cad3; --plot-grid: #e2e4ea;
+  --plot-pane-x: #e4def6; --plot-pane-y: #f5dbe4; --plot-pane-z: #e8ebcf;
+  --plot-ink: #000000; --plot-ref: #4a5060;
+  /* Other clusters' points (dim) and their lines in parallel coordinates (ghost, the grey nearer the background). */
+  --plot-dim: #4a5060; --plot-ghost: #9aa0aa;
+  --plot-seq-0: #fbf7f2; --plot-seq-1: #f6d9c2; --plot-seq-2: #ec9f6e; --plot-seq-3: #cf5b1f; --plot-seq-4: #7c2d0b;
+  --plot-div-0: #2166ac; --plot-div-1: #92c5de; --plot-div-2: #f7f7f7; --plot-div-3: #f4a582; --plot-div-4: #b2182b;
+  --plot-tools-bg: rgba(255,255,255,.94); --plot-tools-hover: #ecebe6; --plot-tools-shadow: 0 2px 8px rgba(20,20,30,.08);
+  --plot-tools-on: rgba(212,80,15,.12); --plot-tools-on-fg: #b8440c;
+  --shadow: 0 14px 36px rgba(20,20,30,.16);
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b0c0f; --panel: #0e1014; --chrome: #121419; --raise: #181b21; --hover: #1e2128;
+  --line: #262931; --line-soft: #1b1e24;
+  --fg: #e6e8ec; --fg-2: #a4a9b5; --fg-3: #7f8592;
+  --accent: #ff6b35; --accent-fg: #1a0b04; --accent-soft: rgba(255,107,53,.14); --accent-line: rgba(255,107,53,.5);
+  --ok: #2ee5a1; --info: #60a5fa; --warn: #f5b84a; --err: #ef4444; --rose: #e87da0;
+  --thumb-x: #8d7fc8; --thumb-y: #c9799a; --thumb-z: #98a25a; --thumb-off: #2a2d35;
+  --paper: #f4f3ef;
+  --plot-bg: #111318; --plot-hover: #1b1e25;
+  --plot-fg: #e6e8ec; --plot-fg-2: #b4b9c4; --plot-fg-3: #8d93a0; --plot-line: #3b404b; --plot-grid: #232731;
+  --plot-pane-x: #262236; --plot-pane-y: #31222a; --plot-pane-z: #272a1c;
+  --plot-ink: #e6e8ec; --plot-ref: #a4a9b5;
+  --plot-dim: #6b7280; --plot-ghost: #4f5562;
+  --plot-seq-0: #1a1d24; --plot-seq-1: #4a2a1c; --plot-seq-2: #8f3f17; --plot-seq-3: #d9611f; --plot-seq-4: #ffb489;
+  --plot-div-0: #5aa2dc; --plot-div-1: #2c4a63; --plot-div-2: #1f222a; --plot-div-3: #6f3a2a; --plot-div-4: #e8705a;
+  --plot-tools-bg: rgba(27,30,37,.94); --plot-tools-hover: #262a33; --plot-tools-shadow: 0 2px 8px rgba(0,0,0,.45);
+  --plot-tools-on: rgba(255,107,53,.16); --plot-tools-on-fg: #ff8a5c;
+  --shadow: 0 14px 36px rgba(0,0,0,.5);
+}

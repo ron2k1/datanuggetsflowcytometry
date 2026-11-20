@@ -1,0 +1,50 @@
+cff-version: 1.2.0
+message: >-
+  If you use datanuggets-flow, please cite the article that introduced data
+  nuggets, given below.
+title: datanuggets-flow
+abstract: >-
+  A flow cytometry pipeline built on the datanuggets library. It gates each
+  FCS file on forward and side scatter, reduces the populations you keep to
+  weighted data nuggets and clusters the nuggets of every file together.
+type: software
+version: 0.1.0a3
+date-released: "2026-11-20"
+authors:
+  - given-names: Ronil
+    family-names: Basu
+license: GPL-2.0-only
+repository-code: "https://github.com/ron2k1/datanuggetsflowcytometry"
+keywords:
+  - flow cytometry
+  - FCS
+  - gating
+  - data nuggets
+  - weighted clustering
+preferred-citation:
+  type: article
+  title: "Data Nuggets: A Method for Reducing Big Data While Preserving Data Structure"
+  authors:
+    - given-names: Traymon E.
+      family-names: Beavers
+      orcid: "https://orcid.org/0000-0002-7549-6587"
+    - given-names: Ge
+      family-names: Cheng
+    - given-names: Yajie
+      family-names: Duan
+      orcid: "https://orcid.org/0000-0001-5833-9056"
+    - given-names: Javier
+      family-names: Cabrera
+    - given-names: Mariusz
+      family-names: Lubomirski
+    - given-names: Dhammika
+      family-names: Amaratunga
+    - given-names: Jeffrey E.
+      family-names: Teigler
+  journal: Journal of Computational and Graphical Statistics
+  volume: 34
+  issue: 1
+  start: 330
+  end: 342
+  year: 2025
+  doi: 10.1080/10618600.2024.2341896

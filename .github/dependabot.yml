@@ -1,0 +1,31 @@
+# Weekly pull requests that bump what is pinned by digest or SHA: the two base images in the
+# Dockerfile and the actions in .github/workflows. Each ecosystem's bumps arrive as one grouped
+# pull request, and a release must be two weeks old before it is proposed. The Python packages in
+# the lockfiles and the build backend pins in app/pyproject.toml are not covered here and move
+# by hand.
+version: 2
+updates:
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      base-images:
+        patterns: ["*"]
+    ignore:
+      # The image stays on Python 3.12 until a release moves it on purpose. New digests of
+      # python:3.12-slim (Debian and CPython patch updates) still come through.
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ["*"]

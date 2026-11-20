@@ -1,0 +1,219 @@
+# The app (app/: backend, page, demos) and its Docker image. The image is built and checked here,
+# natively on amd64 and on arm64, and both jobs block. app/scripts/smoke.py (standard library
+# only) drives the running container in local mode and in trial mode. Nothing is pushed to a
+# registry here. Releases are built and pushed by image.yml, which release.yml runs on a version
+# tag after the PyPI upload. release.yml calls this too, before the upload, so PyPI gets no
+# version whose image fails to build, as it would with a stale app/uv.lock.
+name: app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "src/**"
+      - "pyproject.toml"
+      - "README.md"
+      - "LICENSE"
+      - "THIRD_PARTY.md"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "compose.yaml"
+      - ".github/workflows/app.yml"
+  # every base branch, so a PR into any branch runs it too
+  pull_request:
+    paths:
+      - "app/**"
+      - "src/**"
+      - "pyproject.toml"
+      - "README.md"
+      - "LICENSE"
+      - "THIRD_PARTY.md"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "compose.yaml"
+      - ".github/workflows/app.yml"
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+# github.workflow is the caller's name when release.yml calls this, so a run of its own on the
+# same ref can't cancel a release's
+concurrency:
+  group: app-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  IMAGE: datanuggets-app:ci
+
+jobs:
+  app-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          python-version: "3.12"
+      - run: uv sync --project app --locked
+      # From app/, pytest takes its testpaths (tests and server) from app/pyproject.toml, so the
+      # cross-feature tests and every feature's own tests run.
+      - name: App tests
+        working-directory: app
+        run: uv run --project . --locked pytest -q -p no:cacheprovider -n 2
+
+  image:
+    name: image-${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Version
+        run: |
+          version=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          echo "DN_VERSION=$version" >> "$GITHUB_ENV"
+      - name: Build
+        run: |
+          docker buildx build --load -t "$IMAGE" \
+            --build-arg DN_VERSION="$DN_VERSION" --build-arg DN_REVISION="$GITHUB_SHA" .
+      - name: Image settings and labels
+        run: |
+          docker image inspect "$IMAGE" --format '{{json .Config}}' > config.json
+          python3 - <<'EOF'
+          import json, os
+          c = json.load(open("config.json"))
+          env = dict(e.split("=", 1) for e in c["Env"])
+          assert c["User"] == "dn:dn", c["User"]
+          assert "8000/tcp" in c["ExposedPorts"], c["ExposedPorts"]
+          assert "/data" in c["Volumes"], c["Volumes"]
+          assert c["Healthcheck"]["Test"][0] == "CMD", c["Healthcheck"]
+          assert c["Cmd"] == ["python", "-m", "dnapp"], c["Cmd"]
+          want = {"DN_MODE": "local", "DN_DATA_DIR": "/data", "HOST": "0.0.0.0", "PORT": "8000"}
+          assert all(env.get(k) == v for k, v in want.items()), env
+          oci = "org.opencontainers.image."
+          labels = c.get("Labels") or {}
+          want = {
+              "title": "datanuggets-flow",
+              "source": "https://github.com/ron2k1/datanuggetsflowcytometry",
+              "licenses": "GPL-2.0-only",
+              "version": os.environ["DN_VERSION"],
+              "revision": os.environ["GITHUB_SHA"],
+          }
+          assert all(labels.get(oci + k) == v for k, v in want.items()), labels
+          print("image settings and labels ok")
+          EOF
+      - name: Image contents
+        run: |
+          docker run --rm "$IMAGE" sh -euc '
+            test -s /app/python-package-licenses.txt
+            grep -q "^python-multipart " /app/python-package-licenses.txt
+            grep -q "^  license: GPL-2.0-only$" /app/python-package-licenses.txt
+            test -s /app/LICENSE
+            test -s /app/THIRD_PARTY.md
+            test ! -e /app/app/web/fixtures
+            test ! -e /app/app/web/tools
+            test -z "$(find /app/app -name tests)"
+            echo "image contents ok"'
+      # A build from a git URL, as running-locally.md shows, gets no .dockerignore, so the
+      # Dockerfile alone has to keep the checks above true. The same commit built with no
+      # .dockerignore must hold the same files. The Dockerfile picks the same repository files
+      # on both architectures, so one runner checks it.
+      - name: The same files without .dockerignore
+        if: matrix.arch == 'amd64'
+        run: |
+          ctx=$(mktemp -d)
+          git archive HEAD | tar -x -C "$ctx"
+          rm "$ctx/.dockerignore"
+          docker buildx build --load -t "$IMAGE-noignore" \
+            --build-arg DN_VERSION="$DN_VERSION" --build-arg DN_REVISION="$GITHUB_SHA" "$ctx"
+          files() { docker run --rm -u 0 "$1" find / -xdev | sort; }
+          files "$IMAGE" > "$RUNNER_TEMP/files.txt"
+          files "$IMAGE-noignore" > "$RUNNER_TEMP/files-noignore.txt"
+          test -s "$RUNNER_TEMP/files.txt"
+          diff "$RUNNER_TEMP/files.txt" "$RUNNER_TEMP/files-noignore.txt"
+          docker image rm "$IMAGE-noignore"
+          echo "same files without .dockerignore"
+      - name: Local mode
+        run: |
+          docker run -d --name dn-local -p 127.0.0.1:8000:8000 -v dn-ci-data:/data "$IMAGE"
+          test "$(docker exec dn-local id -u)" != "0"
+          python3 app/scripts/smoke.py --base-url http://127.0.0.1:8000 --mode local
+      - name: Local mode refuses a foreign Host name
+        run: |
+          code() { curl -s -o /dev/null -w '%{http_code}' -H "Host: $1" http://127.0.0.1:8000/api/v1/health; }
+          test "$(code localhost:8000)" = 200
+          test "$(code 127.0.0.1)" = 200
+          test "$(code attacker.example)" = 400
+          echo "host check ok"
+      # smoke.py left a done gate and a done flow run from it in the local workspace
+      - name: Local mode keeps its gate and run on the volume across a restart
+        run: |
+          docker exec dn-local sh -c 'ls /data/ws/local/gates /data/ws/local/runs'
+          docker rm -f dn-local
+          docker run -d --name dn-local -p 127.0.0.1:8000:8000 -v dn-ci-data:/data "$IMAGE"
+          python3 - <<'EOF'
+          import json, time, urllib.request
+          url = "http://127.0.0.1:8000/api/v1/workspace"
+          for _ in range(120):
+              try:
+                  ws = json.load(urllib.request.urlopen(url, timeout=10))
+                  break
+              except OSError:
+                  time.sleep(1)
+          else:
+              raise SystemExit("server did not come back")
+          gates = {g["id"] for g in ws["gates"] if g["status"] == "done"}
+          runs = [r for r in ws["runs"] if r["kind"] == "flow" and r["status"] == "done"]
+          assert any(r["source"] in gates for r in runs), (ws["runs"], sorted(gates))
+          print(f"{len(runs)} flow run(s) and their gate survived the restart")
+          EOF
+      - name: Docker reports the container healthy
+        run: |
+          for _ in $(seq 1 30); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' dn-local)
+            echo "health: $status"
+            [ "$status" = healthy ] && exit 0
+            sleep 5
+          done
+          exit 1
+      # Trial mode on the same volume: its start empties /data/trial and must leave the local
+      # runs in /data/ws/local alone.
+      - name: Trial mode on the local volume
+        run: |
+          docker rm -f dn-local
+          docker run -d --name dn-trial -p 127.0.0.1:8001:8000 \
+            -e DN_MODE=trial -e DN_COOKIE_SECURE=0 -v dn-ci-data:/data "$IMAGE"
+          python3 app/scripts/smoke.py --base-url http://127.0.0.1:8001 --mode trial
+          docker exec dn-trial sh -c 'test -n "$(ls -A /data/ws/local/runs)"'
+          echo "local runs survived a trial start"
+      - name: Container logs
+        if: always()
+        run: |
+          for c in dn-local dn-trial; do
+            echo "::group::$c"
+            docker logs "$c" 2>&1 | tail -n 200 || true
+            echo "::endgroup::"
+          done
+      - name: Clean up
+        if: always()
+        run: |
+          docker rm -f dn-local dn-trial || true
+          docker volume rm dn-ci-data || true

@@ -1,0 +1,73 @@
+"""A flow run's work inside its job worker: the package's cluster stage on a done gate, with the
+run folder's record keeping around it."""
+
+from __future__ import annotations
+
+import shutil
+from pathlib import Path
+
+from dnapp.core.config import FLOW_FIGURES, FLOW_RECORD, FLOW_STEPS
+from dnapp.core.package import flow
+from dnapp.core.protocols import Reporter
+
+# the job's step line for each stage event but "nuggets", which names its file
+STEP_MESSAGES = {
+    "select": "Selected cells",
+    "transform": "Transformed the channels",
+    "scale": "Scaled the channels",
+    "cluster": "Clustered",
+}
+
+
+def flow_work(spec: dict, rep: Reporter, out: Path) -> dict:
+    gates = Path(spec["gates"])
+    folder = flow.load_gates(gates)
+    settings = flow.cluster_settings(spec["settings"])
+    flow.start_run(out)
+    for name in spec["gate_figures"]:
+        shutil.copyfile(gates / name, out / name)
+
+    def on_event(ev) -> None:
+        # a per-file "cofactor" or "scale" event's message is empty, and logs nothing; the
+        # "transform" event's gives the rule and a line per channel with its cofactor
+        rep.log(ev.message)
+        if ev.stage == "nuggets":
+            lo, hi = FLOW_STEPS["nuggets_from"], FLOW_STEPS["nuggets_to"]
+            p = lo + (hi - lo) * (ev.file or 0) / max(ev.n_files, 1)
+            msg = f"Nuggets for file {ev.file} of {ev.n_files}"
+        elif ev.stage == "cofactor" and ev.file:
+            lo, hi = FLOW_STEPS["select"], FLOW_STEPS["cofactor"]
+            p = lo + (hi - lo) * ev.file / max(ev.n_files, 1)
+            msg = f"Cofactor: read file {ev.file} of {ev.n_files}"
+        elif ev.stage == "scale" and ev.file:
+            lo, hi = FLOW_STEPS["transform"], FLOW_STEPS["scale"]
+            p = lo + (hi - lo) * ev.file / max(ev.n_files, 1)
+            msg = f"Scaling: read file {ev.file} of {ev.n_files}"
+        else:
+            p = FLOW_STEPS.get(ev.stage, rep.p)
+            msg = STEP_MESSAGES.get(ev.stage, ev.stage)
+        rep.progress(p, ev.stage, msg)
+        rep.check()
+
+    chosen = [list(p) for p in spec["pops"]]
+    result = flow.cluster_stage(folder.samples, chosen, out, settings, on_event=on_event)
+    rep.progress(FLOW_FIGURES, "figures", "Drew the figures")
+    rep.check()
+    # run.json's transform gets the cofactors the stage used and how they were chosen: auto's
+    # one per channel, with each one's share of cells below 0 and their SD, or the number set;
+    # its clustering block, from the pool, says how the nuggets were clustered and gives the R
+    # calls that rebuild them
+    flow.write_run(
+        out,
+        gates,
+        settings,
+        chosen,
+        result.channels,
+        result.labels,
+        scaling=result.pool.scaling,
+        cofactor=result.cofactor,
+        pool=result.pool,
+    )
+    rep.progress(FLOW_RECORD, "record", "Saved the run record")
+    flow.finish_run(out)
+    return {"k": int(result.pool.k)}

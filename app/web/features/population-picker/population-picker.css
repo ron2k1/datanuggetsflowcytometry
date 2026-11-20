@@ -1,0 +1,39 @@
+/* The population picker: one card per file with its panel and options, and the sticky bar. */
+.pk-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 500px), 1fr)); gap: 14px; }
+.pk-card { padding: 12px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 12px; align-items: start; align-content: start; }
+.pk-card.answered { border-color: var(--accent-line); }
+.pk-card-head { grid-column: 1 / -1; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.pk-file { font-weight: 600; }
+.pk-file .fno { font: 600 12px var(--mono); color: var(--accent); margin-right: 6px; }
+.pk-meta { font-size: 12px; color: var(--fg-3); margin-top: 2px; }
+.pk-state { font: 500 11px var(--mono); padding: 2px 7px; border-radius: 4px; border: 1px solid var(--line); color: var(--fg-3); white-space: nowrap; }
+.pk-state.yes { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.pk-state.skip { color: var(--warn); border-color: var(--warn); }
+.pk-panel { position: relative; overflow: hidden; border-radius: 6px; background: var(--paper); aspect-ratio: 1.15; }
+.pk-panel img { position: absolute; max-width: none; display: block; }
+.pk-q { font-size: 13px; font-weight: 600; margin: 2px 0 8px; }
+.pk-list { display: grid; gap: 5px; }
+.pk-opt { display: grid; grid-template-columns: 16px 10px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 32px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); cursor: pointer; }
+.pk-opt:hover { border-color: var(--fg-3); }
+.pk-opt:has(input:checked) { border-color: var(--accent-line); background: var(--accent-soft); }
+.pk-opt input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; cursor: pointer; }
+.pk-opt .dot { width: 10px; height: 10px; border-radius: 2px; }
+.pk-opt .nm { font: 500 12px var(--mono); }
+.pk-opt .ev { font: 11.5px var(--mono); color: var(--fg-3); }
+.pk-quick { display: flex; gap: 14px; margin-top: 8px; font-size: 12px; }
+.pk-group { margin-top: 10px; }
+.pk-from { margin-bottom: 14px; }
+
+/* The Transform and Scale stages on the Cluster step: two numbered cards, side by side. */
+.pk-stages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pk-stage { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 12px 14px; display: grid; gap: 10px; align-content: start; }
+.pk-stage-head { display: flex; align-items: center; gap: 8px; }
+.doc .pk-stage-head h3 { margin: 0; font-size: 13px; }
+.pk-stage-body { display: grid; gap: 10px; }
+.pk-stage-body .field { max-width: 360px; }
+.pk-stage-hint { color: var(--fg-3); font-size: 11.5px; line-height: 1.5; }
+
+@media (max-width: 760px) {
+  .pk-grid, .pk-card, .pk-stages { grid-template-columns: minmax(0, 1fr); }
+}

@@ -1,0 +1,52 @@
+{
+  "schema": "datanuggets-demos/1",
+  "demos": [
+    {
+      "id": "pbmc",
+      "title": "PBMC spectral flow, 4 samples",
+      "kind": "fcs",
+      "files": [
+        {
+          "name": "190.fcs",
+          "path": "data/190.fcs",
+          "bytes": 11096133,
+          "sha256": "63cdc23d35347c84e9f57182f53c5158ddbfaa9f587f8e9f5938ce1449b477c0",
+          "url": "https://zenodo.org/records/22079206/files/190.fcs?download=1"
+        },
+        {
+          "name": "193.fcs",
+          "path": "data/193.fcs",
+          "bytes": 6773994,
+          "sha256": "feb8878711d985b614ae706137c20ce2b52d95cf3084bf24a5d1ddc3381fcdaa",
+          "url": "https://zenodo.org/records/22079206/files/193.fcs?download=1"
+        },
+        {
+          "name": "199.fcs",
+          "path": "data/199.fcs",
+          "bytes": 3255258,
+          "sha256": "5d4a647080fa1eaa1039c2535f51cee366d1257826790dfad62d82b427ae0a52",
+          "url": "https://zenodo.org/records/22079206/files/199.fcs?download=1"
+        },
+        {
+          "name": "223.fcs",
+          "path": "data/223.fcs",
+          "bytes": 9042702,
+          "sha256": "c5ec3422fb072a286e8b8be037ca0fd0a9b35b9732daca3eb6679b9a85407bcc",
+          "url": "https://zenodo.org/records/22079206/files/223.fcs?download=1"
+        }
+      ],
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "source_url": "https://doi.org/10.5281/zenodo.22079206",
+      "attribution": "Stefanie Kreutmair and Susanne Unger (2026). Flow cytometry data of PBMC of critically ill, mechanically ventilated patients (V1). Zenodo. https://doi.org/10.5281/zenodo.22079206. Four of its 44 FCS 3.1 files (Cytek Aurora), unmodified. Use does not imply endorsement.",
+      "rows": 193293,
+      "description": "4 PBMC samples from ICU patients, 39 parameters, 193,293 events in total.",
+      "suggested": {
+        "pops": [[1], [1], [1, 2], [1]],
+        "groups": ["A", "A", "B", "B"],
+        "k": 8,
+        "cofactor": 6000
+      }
+    }
+  ]
+}

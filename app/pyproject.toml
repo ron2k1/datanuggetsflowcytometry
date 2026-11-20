@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+# The datanuggets-flow web app: a FastAPI backend that runs the datanuggets-flow package, and the
+# static page it serves. It ships as the Docker image only and is never published to PyPI.
+[project]
+name = "datanuggets-app"
+version = "0.1.0"
+description = "Flow cytometry web app for datanuggets-flow: upload FCS files, gate and cluster them, explore the results."
+requires-python = ">=3.12"
+# The package's license (the repository LICENSE). The image lists every bundled package's own
+# license in /app/python-package-licenses.txt, written by scripts/list_licenses.py.
+license = "GPL-2.0-only"
+authors = [{ name = "Ronil Basu" }]
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "datanuggets-flow",
+    "datanuggets>=0.1.0a3,<0.2",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "python-multipart>=0.0.9",
+]
+
+[project.scripts]
+datanuggets-app = "dnapp.__main__:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-xdist>=3.6", "httpx>=0.27"]
+
+[tool.uv]
+# The lock pins what is installed, not what builds it. Three packages are built from source on
+# every install: flowio 1.4.0 (published as an sdist only, built with setuptools), the package and
+# this app (both built with hatchling). Exact backend versions keep a later rebuild of the image
+# from picking up a newer, untested backend. Bump them on purpose, like the base image digest.
+build-constraint-dependencies = ["setuptools==84.0.0", "hatchling==1.32.4"]
+
+[tool.uv.sources]
+datanuggets-flow = { path = "..", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["server/dnapp"]
+# each feature's tests sit beside its code; they stay out of the wheel (and the image)
+exclude = ["**/tests"]
+
+[tool.pytest.ini_options]
+# app/tests holds the cross-feature and end-to-end tests, server/ each feature's own tests/
+testpaths = ["tests", "server"]
+pythonpath = ["tests"]  # tests/testkit.py, the shared kit (conftest.py says how it is wired)
+addopts = "-ra"
+# Starlette 1.x nudges TestClient users from httpx to httpx2; the tests still run on httpx.
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient` is deprecated"]
+
+[tool.ruff]
+line-length = 100
+src = ["server", "tests"]
+
+[tool.ruff.lint.per-file-ignores]
+# its imports follow the sys.path line python -I needs; a file-wide ignore, not inline noqa,
+# because ruff 0.15 enables E402 by default and 0.16 calls the same noqa unused (RUF100)
+"web/tools/build_fixtures.py" = ["E402"]

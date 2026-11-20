@@ -1,0 +1,19 @@
+/* The tab bar: open tabs, the active tab's accent, close buttons and the "+" menu button. */
+.tabbar { display: flex; min-width: 0; background: var(--chrome); border-bottom: 1px solid var(--line); }
+#tabs { display: flex; flex: 0 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+#tabs .tab:last-child { border-right: 0; }
+.tab-add { flex: none; width: 36px; height: 34px; display: grid; place-items: center; color: var(--fg-3); border-left: 1px solid var(--line-soft); }
+.tab-add:hover, .tab-add[aria-expanded="true"] { background: var(--hover); color: var(--fg); }
+.tab { display: flex; align-items: center; gap: 6px; height: 35px; padding: 0 6px 0 12px; border-right: 1px solid var(--line-soft); color: var(--fg-3); cursor: pointer; white-space: nowrap; flex: none; position: relative; user-select: none; }
+.tab:hover { color: var(--fg-2); background: var(--hover); }
+.tab[aria-selected="true"] { background: var(--bg); color: var(--fg); }
+.tab[aria-selected="true"]::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--accent); }
+.tab .hint { color: var(--fg-3); font-size: 12px; }
+.tab .x { width: 20px; height: 20px; border-radius: 4px; display: grid; place-items: center; color: var(--fg-3); opacity: 0; }
+.tab:hover .x, .tab[aria-selected="true"] .x, .tab .x:focus-visible { opacity: 1; }
+.tab .x:hover { background: var(--raise); color: var(--fg); }
+.tab .x svg { width: 12px; height: 12px; }
+
+@media (max-width: 760px) {
+  #tabs { scrollbar-width: none; }
+}

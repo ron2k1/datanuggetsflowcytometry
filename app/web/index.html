@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>datanuggets workbench</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='6' cy='12.5' r='4.2' fill='%23d4500f'/%3E%3Ccircle cx='13.6' cy='6.2' r='2.8' fill='%23d4500f' opacity='.7'/%3E%3Ccircle cx='15' cy='14.6' r='1.9' fill='%23d4500f' opacity='.45'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="shared/styles/tokens.css">
+<link rel="stylesheet" href="shared/styles/base.css">
+<link rel="stylesheet" href="shared/styles/components.css">
+<link rel="stylesheet" href="shared/styles/forms.css">
+<link rel="stylesheet" href="features/shell/shell.css">
+<link rel="stylesheet" href="features/explorer/explorer.css">
+<link rel="stylesheet" href="features/tabs/tabs.css">
+<link rel="stylesheet" href="features/terminal/terminal.css">
+<link rel="stylesheet" href="features/start/start.css">
+<link rel="stylesheet" href="features/run-locally/run-locally.css">
+<link rel="stylesheet" href="features/upload/upload.css">
+<link rel="stylesheet" href="features/gate/gate.css">
+<link rel="stylesheet" href="features/population-picker/population-picker.css">
+<link rel="stylesheet" href="features/live-cells/live-cells.css">
+<link rel="stylesheet" href="features/jobs/jobs.css">
+<link rel="stylesheet" href="features/compare/compare.css">
+<link rel="stylesheet" href="features/record/record.css">
+<link rel="stylesheet" href="features/plot/plot.css">
+<link rel="stylesheet" href="features/legend/legend.css">
+<link rel="stylesheet" href="features/cluster-panel/cluster-panel.css">
+<script src="shared/theme-boot.js"></script>
+<script defer src="vendor/plotly-3.0.1-strict.min.js" integrity="sha384-7MNE81UJ6IGFHgMnhm0R2flmfujIE65CunV+chyM1Q84nhCC0S5PvTcX2PDrcYDZ"></script>
+<script type="module" src="main.js"></script>
+</head>
+<body>
+<div id="app">
+  <header class="titlebar">
+    <button class="tb-btn tb-files" id="btn-files" aria-label="Files" aria-controls="explorer" aria-expanded="false"></button>
+    <div class="brand"><svg class="brand-mark" viewBox="0 0 20 20" aria-hidden="true"><circle cx="6" cy="12.5" r="4.2"/><circle cx="13.6" cy="6.2" r="2.8" opacity=".7"/><circle cx="15" cy="14.6" r="1.9" opacity=".45"/></svg><span class="brand-text">datanuggets <small>workbench</small></span></div>
+    <button class="tb-btn" id="btn-menu" data-menu-btn aria-haspopup="menu" aria-expanded="false" aria-label="Menu"></button>
+    <div class="tb-spacer"></div>
+    <button class="round-btn" id="btn-theme" aria-label="Dark theme" aria-pressed="false"></button>
+    <button class="round-btn" id="btn-ws" data-menu-btn aria-haspopup="menu" aria-expanded="false" aria-label="Workspace"></button>
+  </header>
+
+  <div class="workspace">
+    <aside class="explorer" id="explorer" aria-label="Explorer">
+      <div class="ex-head"><span id="ex-title">Explorer</span><span class="ex-actions" id="ex-actions"></span></div>
+      <nav id="tree"></nav>
+      <div class="ex-foot" id="ex-foot"></div>
+    </aside>
+    <div class="backdrop" id="backdrop"></div>
+    <section class="main">
+      <div class="tabbar">
+        <div id="tabs" role="tablist" aria-label="Open tabs"></div>
+        <button class="tab-add" id="tab-add" data-menu-btn aria-haspopup="menu" aria-expanded="false" aria-label="New tab" title="New tab"></button>
+      </div>
+      <div id="crumbs"></div>
+      <div id="editor"></div>
+      <div class="panel" id="panel" role="region" aria-label="Terminal">
+        <div class="panel-head" role="tablist">
+          <button class="panel-tab" data-ptab="output" role="tab">Output</button>
+          <button class="panel-tab" data-ptab="activity" role="tab">Activity</button>
+          <span class="panel-path" id="panel-path"></span>
+          <button class="icon-btn" id="panel-close" aria-label="Close terminal" title="Close terminal (Ctrl+J)"></button>
+        </div>
+        <div class="panel-body" id="panel-body"></div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="statusbar" id="status">
+    <span class="mode" id="status-mode"></span>
+    <span class="note" id="status-note"></span>
+    <button class="sb-btn" id="btn-term" aria-controls="panel" aria-pressed="false"></button>
+    <span class="right" id="status-right"></span>
+  </footer>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<noscript>datanuggets needs JavaScript to run.</noscript>
+</body>
+</html>

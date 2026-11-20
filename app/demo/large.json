@@ -1,0 +1,27 @@
+{
+  "schema": "datanuggets-large-demos/1",
+  "note": "Fetched on demand by app/scripts/fetch_demo_large.py, never committed and never copied into the image. sha256 and bytes were measured on full downloads on 2026-10-27; md5 is the publisher's own checksum (the Zenodo file record).",
+  "sets": [
+    {
+      "id": "nkg2a",
+      "title": "Healthy-donor PBMC spectral flow, 9 samples (Cytek Aurora, 28 colours)",
+      "kind": "fcs",
+      "rows": 1364975,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "source_url": "https://doi.org/10.5281/zenodo.18367404",
+      "attribution": "Wolfgang Merkt (2026). Spectral Flow Cytometry Data of Targeting the NK cell checkpoint NKG2A promotes lung fibrosis resolution by enhancing immune clearance of senescent myofibroblasts. Zenodo. https://doi.org/10.5281/zenodo.18367404. The 9 healthy-donor PBMC files, unmodified.",
+      "files": [
+        {"name": "2306.fcs", "url": "https://zenodo.org/api/records/18367404/files/2306.fcs/content", "bytes": 21639428, "sha256": "62ac61ebfb095c66348dd8a7f8a171c22fb6ed2ac7fe083226ffbadeff8e5972", "md5": "580679750d7791d9f583dc152f4fe2ea"},
+        {"name": "3742.fcs", "url": "https://zenodo.org/api/records/18367404/files/3742.fcs/content", "bytes": 26469900, "sha256": "71a3d50436cedad56ccbbc184b00a62243e0521a40e2a8457d03420b4b914e20", "md5": "bddfe1b7aa9e29c1dbd5e672f81882bc"},
+        {"name": "4212.fcs", "url": "https://zenodo.org/api/records/18367404/files/4212.fcs/content", "bytes": 25149572, "sha256": "54329d2799fb40a06ded96afceea9dfd0121bd9de1c515bdebe1841ff42dce3e", "md5": "0f0924e49e97b1871ec138a0efa3afb1"},
+        {"name": "4337.fcs", "url": "https://zenodo.org/api/records/18367404/files/4337.fcs/content", "bytes": 23986764, "sha256": "ceafe9f0b20247fbacd74de9ae9f63fcddc669a8356506ee9a19eebd1abfffd2", "md5": "4582b968248be5022f04daf001dc256f"},
+        {"name": "4449.fcs", "url": "https://zenodo.org/api/records/18367404/files/4449.fcs/content", "bytes": 14569160, "sha256": "9f11764acc300016b7cf025f72e01998379d15768dee47b194f6e7e6d5a71154", "md5": "76b864c262615d60e1d1c2a594aceb7d"},
+        {"name": "5143.fcs", "url": "https://zenodo.org/api/records/18367404/files/5143.fcs/content", "bytes": 11552072, "sha256": "7a98d9db089aa6f1866ab701f5bc514aecbea6f0efb4130e32c4b3ee94693ea6", "md5": "24b63b4fff26f5c7b66af17314130921"},
+        {"name": "6042.fcs", "url": "https://zenodo.org/api/records/18367404/files/6042.fcs/content", "bytes": 28421964, "sha256": "a4f781be44ddc946fd1c2827c5e74fc676097bb8e9821be2b9504eb266d0eb2f", "md5": "b08fb1f8f39edf999862dc8712be655c"},
+        {"name": "6252.fcs", "url": "https://zenodo.org/api/records/18367404/files/6252.fcs/content", "bytes": 19696292, "sha256": "8c3212615637528b580ee6cb848ff3fc91b9895c9b682f4729f53bc0c72d95e8", "md5": "b941301efc098cf049d207a42cb5ba6f"},
+        {"name": "6840.fcs", "url": "https://zenodo.org/api/records/18367404/files/6840.fcs/content", "bytes": 25152588, "sha256": "feaf50317b8630ec4c6b6cd7b3e149c6aaf6cabcdb0bce6d33e4227425721986", "md5": "2d27870c64b3e2f99dd0761a93fa19c1"}
+      ]
+    }
+  ]
+}

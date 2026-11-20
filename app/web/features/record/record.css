@@ -1,0 +1,15 @@
+/* The run record: a collapsible JSON tree. */
+.json { font: 12px/1.7 var(--mono); }
+.json details > summary { cursor: pointer; list-style: none; }
+.json details > summary::-webkit-details-marker { display: none; }
+.json details > summary::before { content: "\25B8"; display: inline-block; width: 14px; color: var(--fg-3); transition: transform .1s; }
+.json details[open] > summary::before { transform: rotate(90deg); }
+.json .kids { padding-left: 18px; border-left: 1px solid var(--line-soft); margin-left: 5px; }
+.json .k { color: var(--info); } .json .s { color: var(--ok); } .json .n { color: var(--warn); } .json .b { color: var(--rose); } .json .c { color: var(--fg-3); }
+.json .leaf { padding-left: 14px; overflow-wrap: anywhere; }
+/* A flow run's Transform and Scale stages, above the JSON trees. */
+.rec-stages { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: 12.5px; }
+.rec-stages dt { font-weight: 600; color: var(--fg); }
+.rec-stages dd { margin: 0; color: var(--fg-2); overflow-wrap: anywhere; }
+/* The Cluster stage's R calls, as they would be typed into R. */
+.rec-stages dd.code { font: 12px/1.6 var(--mono); }
