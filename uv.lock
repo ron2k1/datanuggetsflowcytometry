@@ -140,7 +140,7 @@ wheels = [
 
 [[package]]
 name = "datanuggets-flow"
-version = "0.1.0a5"
+version = "0.1.0a6"
 source = { editable = "." }
 dependencies = [
     { name = "datanuggets" },

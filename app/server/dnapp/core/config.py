@@ -112,9 +112,11 @@ GATE_SHARE = 0.9  # the gate files' part of a gate job's bar; its figures take t
 # makes no such pass), then the Scale stage's pass from "transform" to
 # "scale", and the nuggets start from there. The cofactor's pass reads the same files and does
 # less with them (about 40% of the Scale pass's time on four FlowCAP files), so its band is the
-# narrower one
+# narrower one. The 2D t-SNE runs from "cluster" and the 3D one from "tsne_3d"; "figures" is
+# where drawing them starts, and FLOW_FIGURES where it ends
 FLOW_STEPS = {"select": 0.05, "cofactor": 0.08, "transform": 0.08, "scale": 0.15,
-              "nuggets_from": 0.15, "nuggets_to": 0.65, "cluster": 0.75}  # fmt: skip
+              "nuggets_from": 0.15, "nuggets_to": 0.65, "cluster": 0.75, "tsne_3d": 0.82,
+              "figures": 0.9}  # fmt: skip
 FLOW_FIGURES = 0.95
 FLOW_RECORD = 0.98
 LIVECELLS_SHARE = 0.8  # a live-cells job's bar once the kept cells' values are saved

@@ -156,16 +156,20 @@ def cluster_stage(
     with each channel's c, or none with cofactor 0), the Scale stage (unless settings.standardize
     is off: every channel centred and scaled to SD 1 by pooled_scaling's mean and SD), the kept
     cells' nuggets on those scaled values, their clustering (settings.method: weighted k-means,
-    or the hierarchical tree), the tables, the t-SNE unless
-    settings.tsne is off, the viewer's tables (flow.outputs.viewer_tables), and the figures,
-    drawn on figure (see flow.figures). The tables give channel values in the transform's units.
+    or the hierarchical tree), the tables, the t-SNE unless settings.tsne is off, the viewer's
+    tables (flow.outputs.viewer_tables), and the figures, drawn on figure (see flow.figures).
+    The tables give channel values in the transform's units.
     Events: "channels" per file read (with nothing to print) while the default channels are
     checked, "select" with selection.csv's table, "cofactor" per file read (nothing to print)
     while auto tallies, "transform" with what it does and the cofactor used and why, "scale" per
     file read (with nothing to print) while the Scale stage pools its stats, then "scale" with
-    what it does, "nuggets" per kept file, "cluster" with each cluster's percent and the k used.
-    The result's cofactor is the Cofactor used, for state.write_run. With row_filters,
-    selection.csv counts the cells that pass them, so it is written after the nuggets are made.
+    what it does, "nuggets" per kept file, "cluster" with each cluster's percent and the k used,
+    "tsne" before the 2-D fit and again before the 3-D call (nothing to print; its data gives
+    the nuggets and the dims, 2 then 3), and "figures" (nothing to print) once the viewer's
+    tables are written, before the figures are drawn. A handler that raises stops the stage at
+    that event. The result's cofactor is the Cofactor used, for state.write_run. With
+    row_filters, selection.csv counts the cells that pass them, so it is written after the
+    nuggets are made.
     The settings, that chosen gives one choice per sample and that groups names one group per
     sample are checked before anything is read or written: a backend calls this without the
     CLI's checks, and a short chosen would drop its missing files from the tables without a
@@ -248,7 +252,9 @@ def cluster_stage(
     xy = xyz = None
     if settings.tsne:
         used = pool.centers[pool.use]
+        emit(StageEvent("tsne", None, n, "", {"nuggets": len(used), "dims": 2}))
         xy = tsne_embedding(used, settings)
+        emit(StageEvent("tsne", None, n, "", {"nuggets": len(used), "dims": 3}))
         xyz = tsne_3d(used, perplexity=settings.tsne_perplexity, seed=settings.tsne_seed)
     from datanuggets_flow.outputs import pool_colors, viewer_tables
 
@@ -260,6 +266,7 @@ def cluster_stage(
         files.append(out / name)
     from datanuggets_flow.figures import result_figures, save_figures
 
+    emit(StageEvent("figures", None, n, "", {}))
     figs = result_figures(
         pool,
         tables.centers,

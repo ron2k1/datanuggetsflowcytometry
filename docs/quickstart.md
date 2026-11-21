@@ -7,10 +7,10 @@
 Use Python 3.12 or newer. The package installs where `datanuggets` does: Windows x64, Apple silicon Macs running macOS 12 or newer, and Linux x86-64 or ARM64 with glibc 2.27 or newer.
 
 ```sh
-python -m pip install "datanuggets-flow==0.1.0a5"
+python -m pip install "datanuggets-flow==0.1.0a6"
 ```
 
-This also installs `datanuggets`, flowio, pandas, matplotlib and scikit-learn. `0.1.0a5` is a pre-release, and naming the version tells pip to install it.
+This also installs `datanuggets`, flowio, pandas, matplotlib and scikit-learn. `0.1.0a6` is a pre-release, and naming the version tells pip to install it.
 
 ## A first datanuggets-flow run
 

@@ -651,6 +651,7 @@ def test_stage_events_carry_the_cli_lines(tmp_path):
         ("scale", None),
         ("nuggets", 1),
         ("cluster", None),
+        ("figures", None),
     ]
     assert (events[1].message, events[1].data) == ("", {"cells": 2_292})  # nothing to print
     assert events[2].message == "\n" + run.selection.to_string(index=False)
@@ -666,6 +667,78 @@ def test_stage_events_carry_the_cli_lines(tmp_path):
         "\nPercent of each file's kept cells in each cluster:\n"
         "(columns are file numbers; selection.csv names the files)\nfile_number"
     )
+    assert (events[8].message, events[8].data) == ("", {})  # no t-SNE, so the figures next
+
+
+def _record_fits(monkeypatch, seen):
+    """Wraps the two t-SNE fits and the drawing so that each call puts its name in seen."""
+    from datanuggets_flow import figures
+    from datanuggets_flow._pipeline import stages
+
+    for module, name in (
+        (stages, "tsne_embedding"),
+        (stages, "tsne_3d"),
+        (figures, "result_figures"),
+    ):
+        fn = getattr(module, name)
+
+        def called(*args, _fn=fn, _name=name, **kwargs):
+            seen.append(_name)
+            return _fn(*args, **kwargs)
+
+        monkeypatch.setattr(module, name, called)
+
+
+def test_the_tsne_fits_and_the_figures_each_send_an_event(tmp_path, monkeypatch):
+    """After "cluster": "tsne" before the 2-D fit and again before the 3-D one, then "figures"
+    before the figures are drawn, none with anything to print. A backend's bar moves through this
+    stretch and its cancel check runs before each fit and before the drawing, which can take most
+    of a large run."""
+    seen = []
+    _record_fits(monkeypatch, seen)
+    settings = ClusterSettings(dn_num2=50, k=3, n_jobs=1, tsne=True, cofactor=6000.0)
+    run = cluster_stage(
+        _gated_202(), [[6]], tmp_path, settings, read=read_202, on_event=seen.append
+    )
+    after = seen[[getattr(e, "stage", None) for e in seen].index("cluster") + 1 :]
+    used = len(run.tsne)
+    assert after == [
+        ("tsne", None, 1, "", {"nuggets": used, "dims": 2}),
+        "tsne_embedding",
+        ("tsne", None, 1, "", {"nuggets": used, "dims": 3}),
+        "tsne_3d",
+        ("figures", None, 1, "", {}),
+        "result_figures",
+    ]
+
+
+class _Stop(Exception):
+    pass
+
+
+@pytest.mark.parametrize(
+    ("stage", "ran", "wrote"),
+    [("tsne", [], []), ("figures", ["tsne_embedding", "tsne_3d"], ["tsne.csv", "tsne3d.csv"])],
+)
+def test_a_handler_raising_at_the_tsne_or_figures_event_stops_before_the_figures(
+    tmp_path, monkeypatch, stage, ran, wrote
+):
+    """What a backend's cancel does: raising at the first "tsne" stops before either fit, so no
+    t-SNE table is written; raising at "figures" stops once the tables are written, before
+    anything is drawn."""
+    seen = []
+    _record_fits(monkeypatch, seen)
+
+    def stop(event):
+        if event.stage == stage:
+            raise _Stop
+
+    settings = ClusterSettings(dn_num2=50, k=3, n_jobs=1, tsne=True, cofactor=6000.0)
+    with pytest.raises(_Stop):
+        cluster_stage(_gated_202(), [[6]], tmp_path, settings, read=read_202, on_event=stop)
+    assert seen == ran
+    assert sorted(p.name for p in tmp_path.glob("tsne*.csv")) == wrote
+    assert not list(tmp_path.glob("*.png"))
 
 
 def test_cluster_stage_without_tsne_never_imports_sklearn(tmp_path, monkeypatch):

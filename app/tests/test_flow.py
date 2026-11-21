@@ -438,11 +438,61 @@ def test_a_flow_run_records_the_transform_and_scale_stages(flow_run):
         (0.15, "scale", "Scaling: read file 2 of 2"),
         (0.15, "scale", "Scaled the channels"),
     ]
+    # the t-SNE's two fits and the figures take the bar from cluster on, a step before each
+    n = len(pd.read_csv(out / "tsne.csv"))
+    assert [s for s in steps if s[1] in ("tsne", "figures")] == [
+        (0.75, "tsne", f"t-SNE of {n:,} nuggets in 2D"),
+        (0.82, "tsne", f"t-SNE of {n:,} nuggets in 3D"),
+        (0.9, "figures", "Drawing the figures"),
+        (0.95, "figures", "Drew the figures"),
+    ]
     stages = [s[1] for s in steps]
     assert stages.index("channels") < stages.index("select") < stages.index("cofactor")
     assert stages.index("cofactor") < stages.index("transform")
     assert stages.index("transform") < stages.index("scale") < stages.index("nuggets")
+    assert stages.index("cluster") < stages.index("tsne") < stages.index("figures")
     assert [s[0] for s in steps] == sorted(s[0] for s in steps)
+
+
+@pytest.mark.parametrize(
+    ("stage", "wrote"), [("tsne", []), ("figures", ["tsne.csv", "tsne3d.csv"])]
+)
+def test_cancel_takes_at_the_tsne_and_at_the_figures(flow, tmp_path, stage, wrote):
+    """A cancel asked while the t-SNE runs takes at its next step, not after the figures: the
+    worker checks after each event, and each fit and the figures send one. Asked at the first
+    "tsne" step, the run stops before the t-SNE tables are written; at "figures", before any
+    figure is drawn. test_flow_pipeline checks that each event comes before its fit."""
+    from dnapp.core.config import GATE_FIGURES
+    from dnapp.core.package import flow as package
+    from dnapp.features.flow.worker import flow_work
+    from dnapp.features.jobs.worker import Cancelled
+
+    class AskedAt:  # a Reporter whose cancel request is there once the bar reaches stage
+        p, asked = 0.0, False
+
+        def progress(self, p, step, message=None):
+            self.p, self.asked = p, self.asked or step == stage
+
+        def log(self, text):
+            pass
+
+        def check(self):
+            if self.asked:
+                raise Cancelled()
+
+    _, settings, _, _ = flow
+    sent = dict(package.cluster_defaults(), **SMALL, n_jobs=1)
+    spec = {
+        "gates": str(settings.data_dir / "ws" / "local" / "gates" / "g1"),
+        "gate_figures": list(GATE_FIGURES),
+        "pops": [[1], [1]],
+        "settings": package.cluster_settings(sent).to_dict(),
+    }
+    out = tmp_path / "run"
+    with pytest.raises(Cancelled):
+        flow_work(spec, AskedAt(), out)
+    assert sorted(p.name for p in out.glob("tsne*.csv")) == wrote
+    assert sorted(p.name for p in out.glob("*.png")) == sorted(GATE_FIGURES)  # copied, none drawn
 
 
 def progress_steps(settings, job) -> list[tuple]:
@@ -479,6 +529,11 @@ def test_standardize_false_runs_without_the_scale_stage(flow):
     assert "cofactor" not in {s[1] for s in steps}
     assert [s for s in steps if s[1] == "transform"] == [
         (0.08, "transform", "Transformed the channels")
+    ]
+    # no t-SNE, so the figures' step follows the clustering
+    assert [s for s in steps if s[1] in ("tsne", "figures")] == [
+        (0.9, "figures", "Drawing the figures"),
+        (0.95, "figures", "Drew the figures"),
     ]
     assert [s[0] for s in steps] == sorted(s[0] for s in steps)
     assert list(pd.read_csv(out / "pca_center.csv").columns) == ["channel", "label", "center"]
