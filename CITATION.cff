@@ -9,8 +9,8 @@ abstract: >-
   reduces the populations you keep to weighted data nuggets and clusters the
   nuggets of every file together.
 type: software
-version: 0.1.0a5
-date-released: "2026-11-20"
+version: 0.1.0a6
+date-released: "2026-11-21"
 authors:
   - given-names: Ronil
     family-names: Basu

@@ -21,10 +21,10 @@ if TYPE_CHECKING:
 
 
 class StageEvent(NamedTuple):
-    """What a step reports as it goes: its stage ("gate", "select", "cofactor", "transform",
-    "scale", "nuggets" or "cluster"), the file it is about (numbered from 1; None for the whole
-    run) of n_files, message, the lines the CLI prints for it ("" for a progress event with
-    nothing to print), and data, the same facts as values."""
+    """What a step reports as it goes: its stage ("gate", "channels", "select", "cofactor",
+    "transform", "scale", "nuggets", "cluster", "tsne" or "figures"), the file it is about
+    (numbered from 1; None for the whole run) of n_files, message, the lines the CLI prints for
+    it ("" for a progress event with nothing to print), and data, the same facts as values."""
 
     stage: str
     file: int | None

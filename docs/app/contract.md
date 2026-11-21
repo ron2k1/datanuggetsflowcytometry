@@ -224,6 +224,15 @@ cells_per_file: int = FLOW_CELLS_PER_FILE  # 2000, in _defaults; 0 = no cells.cs
 
 - `state.write_run` needs no new keys for these tables (settings carry the new fields). The
   `cluster` StageEvent data gains `"k": pool.k`.
+- After `cluster`, with tsne on, the stage sends a `"tsne"` event before each t-SNE fit, `file`
+  None, an empty message and data `{"nuggets": n, "dims": 2}`, then `{"nuggets": n, "dims": 3}`
+  before the 3-D call (which fits nothing for fewer than three channels or nuggets). With tsne
+  on or off it then sends `"figures"`, `file` None, an empty message and data `{}`, once the
+  viewer tables are written and before the figures are drawn. The worker moves the bar to
+  `FLOW_STEPS["cluster"]` for the 2-D fit and `FLOW_STEPS["tsne_3d"]` for the 3-D one, with the
+  progress message `t-SNE of n nuggets in 2D` (or `3D`), and to `FLOW_STEPS["figures"]` with
+  `Drawing the figures`; each checks for a cancel and logs nothing. A cancel sent during a fit
+  takes when that fit ends, and one sent during the drawing when the stage returns.
 - With no channels sent, the stage first reads every kept file once to check the default
   channels for values that aren't numbers, and sends a `"channels"` event per file read,
   with `file` set, an empty message and data `{"cells": n}`; the worker moves the bar from
@@ -240,7 +249,7 @@ cells_per_file: int = FLOW_CELLS_PER_FILE  # 2000, in _defaults; 0 = no cells.cs
   `FLOW_STEPS["transform"]` to `FLOW_STEPS["scale"]` on them and checks for a cancel, and logs
   nothing. The stage's own `"scale"` event (`file` None) follows. The events come in the order
   channels per file, select, cofactor per file, transform, scale per file, scale, nuggets per
-  file, cluster.
+  file, cluster, tsne (2-D, then 3-D, only with tsne on), figures.
   `state.write_run(..., scaling=result.pool.scaling, cofactor=result.cofactor, pool=result.pool)`
   records them in run.json as `transform` and `standardize`, and the Cluster stage as
   `clustering` (below) (`{"mean", "sd", "ddof": 0, "cells", "skew"}` or

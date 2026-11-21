@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.1.0a6
+
+This release shows a run's progress through the t-SNE and the figures, and lets Cancel stop a run there. It's on PyPI as `datanuggets-flow==0.1.0a6` and is the app image `ghcr.io/ron2k1/datanuggets-flow:0.1.0a6`. The `datanuggets` library and the dependencies are those of 0.1.0a3.
+
+### Changed
+
+- `cluster_stage` sends a `"tsne"` event before the 2-D t-SNE fit and again before the 3-D call, with the nuggets and the dims as data, and a `"figures"` event before it draws the figures. Neither has anything to print, so the command's output is the same. A handler that raises at one stops the stage there.
+
+### App
+
+- The progress bar moves from the clustering through the 2-D t-SNE, the 3-D t-SNE and the figures, and its line names how many nuggets each fit takes. It used to stay at "Clustered" through all three, which took about 10 minutes on a 66-file run.
+- Cancel stops a run before each t-SNE fit and before the figures. A fit that has started still runs to its end.
+
 ## 0.1.0a5
 
 This release fixes three of the limits listed for 0.1.0a4: scatter names, a label column in the default channels, and the app's upload check. It's on PyPI as `datanuggets-flow==0.1.0a5` and is the app image `ghcr.io/ron2k1/datanuggets-flow:0.1.0a5`. The `datanuggets` library and the dependencies are those of 0.1.0a3.

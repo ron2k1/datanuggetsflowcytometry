@@ -222,6 +222,7 @@ def test_only_auto_reads_the_files_once_more(tmp_path, cofactor, reads, tallied)
         ("nuggets", 1),
         ("nuggets", 2),
         ("cluster", None),
+        ("figures", None),
     ]
     counted = [(2, "", {"cells": N}), (2, "", {"cells": N - 1})]
     assert [(e.n_files, e.message, e.data) for e in events[:2]] == counted

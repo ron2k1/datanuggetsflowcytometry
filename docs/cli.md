@@ -6,7 +6,7 @@
 
 A run does everything at once, or in two stages: `--gates-only` gates the files and saves the gates, and `--from-gates` chooses populations from them and clusters, as [Staged runs](#staged-runs) describes.
 
-`python -m pip install "datanuggets-flow==0.1.0a5"` installs the command with flowio, matplotlib, pandas and scikit-learn. In a clone, `uv sync` installs them and `uv run datanuggets-flow` runs it. The [quickstart](quickstart.md#a-first-datanuggets-flow-run) walks through a first run.
+`python -m pip install "datanuggets-flow==0.1.0a6"` installs the command with flowio, matplotlib, pandas and scikit-learn. In a clone, `uv sync` installs them and `uv run datanuggets-flow` runs it. The [quickstart](quickstart.md#a-first-datanuggets-flow-run) walks through a first run.
 
 > **Experimental workflow.** Each run creates a fresh folder under `outputs/` by default. Existing output paths are refused, and unfinished runs retain an `INCOMPLETE.txt` marker. Choose at least two distinct fluorescence channels and enough retained cells to make at least three occupied nuggets.
 

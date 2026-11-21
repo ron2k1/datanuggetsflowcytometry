@@ -10,12 +10,14 @@ from dnapp.core.config import FLOW_FIGURES, FLOW_RECORD, FLOW_STEPS, PROGRESS_ST
 from dnapp.core.package import flow
 from dnapp.core.protocols import Reporter
 
-# the job's step line for each stage event but "nuggets", which names its file
+# the job's step line for each stage event but "nuggets", which names its file, and "tsne",
+# which gives its nuggets and dims
 STEP_MESSAGES = {
     "select": "Selected cells",
     "transform": "Transformed the channels",
     "scale": "Scaled the channels",
     "cluster": "Clustered",
+    "figures": "Drawing the figures",
 }
 
 
@@ -29,7 +31,9 @@ def flow_work(spec: dict, rep: Reporter, out: Path) -> dict:
 
     def on_event(ev) -> None:
         # a per-file "channels", "cofactor" or "scale" event's message is empty, and logs
-        # nothing; the "transform" event's gives the rule and a line per channel with its cofactor
+        # nothing, as do "tsne" and "figures"; the "transform" event's gives the rule and a line
+        # per channel with its cofactor. Each event is a cancel point, so the t-SNE fits and the
+        # figures each start with one
         rep.log(ev.message)
         if ev.stage == "nuggets":
             lo, hi = FLOW_STEPS["nuggets_from"], FLOW_STEPS["nuggets_to"]
@@ -47,6 +51,9 @@ def flow_work(spec: dict, rep: Reporter, out: Path) -> dict:
             lo, hi = FLOW_STEPS["transform"], FLOW_STEPS["scale"]
             p = lo + (hi - lo) * ev.file / max(ev.n_files, 1)
             msg = f"Scaling: read file {ev.file} of {ev.n_files}"
+        elif ev.stage == "tsne":
+            p = FLOW_STEPS["tsne_3d" if ev.data["dims"] == 3 else "cluster"]
+            msg = f"t-SNE of {ev.data['nuggets']:,} nuggets in {ev.data['dims']}D"
         else:
             p = FLOW_STEPS.get(ev.stage, rep.p)
             msg = STEP_MESSAGES.get(ev.stage, ev.stage)

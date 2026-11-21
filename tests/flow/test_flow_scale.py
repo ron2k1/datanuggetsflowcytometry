@@ -231,6 +231,9 @@ def test_stage_events_name_the_transform_and_the_scale(scaled_run):
         ("nuggets", 1),
         ("nuggets", 2),
         ("cluster", None),
+        ("tsne", None),
+        ("tsne", None),
+        ("figures", None),
     ]
     transform, scale = events[3], events[6]
     counted = [(2, "", {"cells": 39_860}), (2, "", {"cells": 2_292})]
